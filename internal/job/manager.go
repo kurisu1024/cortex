@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/topher/cortex/internal/audio"
+	"github.com/topher/cortex/internal/config"
 	"github.com/topher/cortex/internal/models"
 	"github.com/topher/cortex/internal/script"
 	"github.com/topher/cortex/internal/ui"
@@ -25,17 +27,18 @@ const (
 
 // Job represents a generation job
 type Job struct {
-	ID         string
-	Topic      string
-	Status     Status
-	Progress   *Progress
-	OutputDir  string
-	Voice      string
-	Background string
-	CreatedAt  time.Time
-	StartedAt  *time.Time
-	CompletedAt *time.Time
-	Error      error
+	ID             string
+	Topic          string
+	Status         Status
+	Progress       *Progress
+	OutputDir      string
+	Voice          string
+	Background     string
+	HighVoicesOnly bool
+	CreatedAt      time.Time
+	StartedAt      *time.Time
+	CompletedAt    *time.Time
+	Error          error
 }
 
 // Manager handles job lifecycle
@@ -55,18 +58,19 @@ func NewManager() *Manager {
 }
 
 // CreateJob creates a new job
-func (m *Manager) CreateJob(topic, outputDir, voice, background string) (string, error) {
+func (m *Manager) CreateJob(topic, outputDir, voice, background string, highVoicesOnly bool) (string, error) {
 	jobID := fmt.Sprintf("job_%d", time.Now().Unix())
 
 	job := &Job{
-		ID:         jobID,
-		Topic:      topic,
-		Status:     StatusPending,
-		Progress:   NewProgress(),
-		OutputDir:  outputDir,
-		Voice:      voice,
-		Background: background,
-		CreatedAt:  time.Now(),
+		ID:             jobID,
+		Topic:          topic,
+		Status:         StatusPending,
+		Progress:       NewProgress(),
+		OutputDir:      outputDir,
+		Voice:          voice,
+		Background:     background,
+		HighVoicesOnly: highVoicesOnly,
+		CreatedAt:      time.Now(),
 	}
 
 	m.jobs[jobID] = job
@@ -98,6 +102,20 @@ func (m *Manager) RunJob(jobID string) error {
 	m.ui.ShowProgress(1, 5, "Generating script", "", job.Progress.StartTime)
 
 	scriptGen := script.NewGenerator(m.modelManager.GetLLM())
+
+	// Load config to get multiple voices if available
+	cfg, err := config.Load()
+	if err == nil && len(cfg.Models.TTS.Voices) > 0 {
+		voices := cfg.Models.TTS.Voices
+
+		// Filter for high-quality voices only if requested
+		if job.HighVoicesOnly {
+			voices = m.filterHighQualityVoices(voices)
+		}
+
+		scriptGen.SetVoices(voices)
+	}
+
 	scr, err := scriptGen.Generate(job.Topic)
 	if err != nil {
 		return m.failJob(job, fmt.Errorf("script generation failed: %w", err))
@@ -175,4 +193,23 @@ func (m *Manager) ListJobs() []*Job {
 		jobs = append(jobs, job)
 	}
 	return jobs
+}
+
+// filterHighQualityVoices filters voices to only include high-quality ones
+func (m *Manager) filterHighQualityVoices(voices map[string]string) map[string]string {
+	filtered := make(map[string]string)
+
+	for speaker, voicePath := range voices {
+		// Check if voice path contains "-high" indicating high quality
+		if strings.Contains(voicePath, "-high") {
+			filtered[speaker] = voicePath
+		}
+	}
+
+	// If no high-quality voices found, return all voices as fallback
+	if len(filtered) == 0 {
+		return voices
+	}
+
+	return filtered
 }

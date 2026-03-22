@@ -34,10 +34,23 @@ func (g *Generator) GenerateFromScript(scr *script.Script, outputDir string) ([]
 	for i, segment := range scr.Segments {
 		outputPath := filepath.Join(audioDir, fmt.Sprintf("segment_%03d.wav", i))
 
-		fmt.Printf("  [%d/%d] Generating audio...\n", i+1, len(scr.Segments))
+		// Show which speaker/voice is being used
+		speaker := segment.Speaker
+		if speaker == "" {
+			speaker = "Narrator"
+		}
+		fmt.Printf("  [%d/%d] %s: Generating audio...\n", i+1, len(scr.Segments), speaker)
 
-		if err := g.tts.GenerateAudio(segment.Text, outputPath); err != nil {
-			return nil, fmt.Errorf("failed to generate audio for segment %d: %w", i, err)
+		// Use segment-specific voice if available
+		if segment.VoicePath != "" {
+			if err := g.tts.GenerateAudioWithVoice(segment.Text, outputPath, segment.VoicePath); err != nil {
+				return nil, fmt.Errorf("failed to generate audio for segment %d: %w", i, err)
+			}
+		} else {
+			// Fall back to default voice
+			if err := g.tts.GenerateAudio(segment.Text, outputPath); err != nil {
+				return nil, fmt.Errorf("failed to generate audio for segment %d: %w", i, err)
+			}
 		}
 
 		audioPaths = append(audioPaths, outputPath)

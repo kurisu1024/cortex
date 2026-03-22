@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 )
 
 // TTSClient handles text-to-speech operations
@@ -39,21 +40,34 @@ func (t *TTSClient) IsHealthy() bool {
 	return err == nil
 }
 
-// GenerateAudio generates audio from text
+// GenerateAudio generates audio from text using the default voice
 func (t *TTSClient) GenerateAudio(text, outputPath string) error {
+	return t.GenerateAudioWithVoice(text, outputPath, t.voice)
+}
+
+// GenerateAudioWithVoice generates audio from text using a specific voice
+func (t *TTSClient) GenerateAudioWithVoice(text, outputPath, voicePath string) error {
 	switch t.engine {
 	case "piper":
-		return t.generateWithPiper(text, outputPath)
+		return t.generateWithPiperVoice(text, outputPath, voicePath)
 	default:
 		return fmt.Errorf("unsupported TTS engine: %s", t.engine)
 	}
 }
 
-// generateWithPiper uses Piper TTS to generate audio
-func (t *TTSClient) generateWithPiper(text, outputPath string) error {
+// generateWithPiperVoice uses Piper TTS to generate audio with a specific voice
+func (t *TTSClient) generateWithPiperVoice(text, outputPath, voicePath string) error {
 	// Piper command: echo "text" | piper --model voice.onnx --output_file output.wav
-	// Note: t.voice should be the path to the .onnx model file
-	cmd := exec.Command("piper", "--model", t.voice, "--output_file", outputPath)
+	// Note: voicePath should be the path to the .onnx model file
+	// Expand tilde in voice path
+	if len(voicePath) > 0 && voicePath[0] == '~' {
+		homeDir, err := os.UserHomeDir()
+		if err == nil {
+			voicePath = filepath.Join(homeDir, voicePath[1:])
+		}
+	}
+
+	cmd := exec.Command("piper", "--model", voicePath, "--output_file", outputPath)
 
 	// Create a pipe for stdin
 	stdin, err := cmd.StdinPipe()

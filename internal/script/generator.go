@@ -10,9 +10,10 @@ import (
 
 // Segment represents a section of the script
 type Segment struct {
-	Index   int
-	Speaker string
-	Text    string
+	Index      int
+	Speaker    string
+	Text       string
+	VoicePath  string // Path to the voice model for this segment
 }
 
 // Script represents a generated script with segments
@@ -24,12 +25,27 @@ type Script struct {
 
 // Generator handles script generation
 type Generator struct {
-	llm *models.LLMClient
+	llm             *models.LLMClient
+	availableVoices map[string]string // speaker name -> voice path
+	speakers        []string          // list of speaker names for rotation
 }
 
 // NewGenerator creates a new script generator
 func NewGenerator(llm *models.LLMClient) *Generator {
-	return &Generator{llm: llm}
+	return &Generator{
+		llm:             llm,
+		availableVoices: make(map[string]string),
+		speakers:        []string{},
+	}
+}
+
+// SetVoices sets multiple voices for different speakers
+func (g *Generator) SetVoices(voices map[string]string) {
+	g.availableVoices = voices
+	g.speakers = make([]string, 0, len(voices))
+	for speaker := range voices {
+		g.speakers = append(g.speakers, speaker)
+	}
 }
 
 // Generate creates a script for the given topic
@@ -130,11 +146,13 @@ func (g *Generator) parseSegments(text string) []Segment {
 	if len(matches) > 0 {
 		for _, match := range matches {
 			if len(match) >= 3 {
-				segments = append(segments, Segment{
+				segment := Segment{
 					Index:   len(segments),
-					Speaker: "Narrator",
+					Speaker: g.assignSpeaker(len(segments)),
 					Text:    strings.TrimSpace(match[2]),
-				})
+				}
+				segment.VoicePath = g.getVoicePathForSpeaker(segment.Speaker)
+				segments = append(segments, segment)
 			}
 		}
 	} else {
@@ -143,25 +161,46 @@ func (g *Generator) parseSegments(text string) []Segment {
 		for _, para := range paragraphs {
 			para = strings.TrimSpace(para)
 			if para != "" && len(para) > 20 {
-				segments = append(segments, Segment{
+				segment := Segment{
 					Index:   len(segments),
-					Speaker: "Narrator",
+					Speaker: g.assignSpeaker(len(segments)),
 					Text:    para,
-				})
+				}
+				segment.VoicePath = g.getVoicePathForSpeaker(segment.Speaker)
+				segments = append(segments, segment)
 			}
 		}
 	}
 
 	// If still no segments, create one big segment
 	if len(segments) == 0 {
-		segments = append(segments, Segment{
+		segment := Segment{
 			Index:   0,
-			Speaker: "Narrator",
+			Speaker: g.assignSpeaker(0),
 			Text:    strings.TrimSpace(text),
-		})
+		}
+		segment.VoicePath = g.getVoicePathForSpeaker(segment.Speaker)
+		segments = append(segments, segment)
 	}
 
 	return segments
+}
+
+// assignSpeaker assigns a speaker to a segment (rotates through available speakers)
+func (g *Generator) assignSpeaker(segmentIndex int) string {
+	if len(g.speakers) == 0 {
+		return "Narrator"
+	}
+	// Rotate through available speakers
+	return g.speakers[segmentIndex%len(g.speakers)]
+}
+
+// getVoicePathForSpeaker returns the voice path for a given speaker
+func (g *Generator) getVoicePathForSpeaker(speaker string) string {
+	if voicePath, exists := g.availableVoices[speaker]; exists {
+		return voicePath
+	}
+	return "" // Will use default voice
 }
 
 // SaveToFile saves the script to a text file

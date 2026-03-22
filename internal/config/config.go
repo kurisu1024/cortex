@@ -24,8 +24,9 @@ type OllamaConfig struct {
 
 // TTSConfig holds TTS configuration
 type TTSConfig struct {
-	Engine string `mapstructure:"engine"`
-	Voice  string `mapstructure:"voice"`
+	Engine string            `mapstructure:"engine"`
+	Voice  string            `mapstructure:"voice"`  // Default voice
+	Voices map[string]string `mapstructure:"voices"` // Multiple voices: speaker_name -> voice_path
 }
 
 // OutputConfig holds output-related configuration
@@ -49,7 +50,8 @@ func Load() (*Config, error) {
 	viper.SetDefault("models.ollama.host", "http://localhost:11434")
 	viper.SetDefault("models.ollama.model", "llama3")
 	viper.SetDefault("models.tts.engine", "piper")
-	viper.SetDefault("models.tts.voice", "en_US-lessac-medium")
+	viper.SetDefault("models.tts.voice", "~/.local/share/piper/voices/en_US-lessac-medium.onnx")
+	viper.SetDefault("models.tts.voices", map[string]string{})
 	viper.SetDefault("output.directory", "./output")
 	viper.SetDefault("output.video.format", "mp4")
 	viper.SetDefault("output.video.background", "gradient")

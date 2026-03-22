@@ -9,9 +9,10 @@ import (
 )
 
 var (
-	outputDir  string
-	voiceName  string
-	background string
+	outputDir      string
+	voiceName      string
+	background     string
+	highVoicesOnly bool
 )
 
 var generateCmd = &cobra.Command{
@@ -33,10 +34,14 @@ var generateCmd = &cobra.Command{
 		}
 
 		manager := job.NewManager()
-		jobID, err := manager.CreateJob(topic, outputDir, voiceName, background)
+		jobID, err := manager.CreateJob(topic, outputDir, voiceName, background, highVoicesOnly)
 		if err != nil {
 			fmt.Printf("❌ Error creating job: %v\n", err)
 			return
+		}
+
+		if highVoicesOnly {
+			fmt.Println("🎯 Using high-quality voices only")
 		}
 
 		if err := manager.RunJob(jobID); err != nil {
@@ -54,4 +59,5 @@ func init() {
 	generateCmd.Flags().StringVarP(&outputDir, "output", "o", "", "output directory for generated files")
 	generateCmd.Flags().StringVarP(&voiceName, "voice", "v", "", "TTS voice to use")
 	generateCmd.Flags().StringVarP(&background, "background", "b", "gradient", "video background style (gradient, solid, image)")
+	generateCmd.Flags().BoolVarP(&highVoicesOnly, "high-voices-only", "H", false, "use only high-quality voices for generation")
 }

@@ -1,4 +1,4 @@
-.PHONY: build install clean test run help check-prereqs install-prereqs
+.PHONY: build install clean test run help check-prereqs install-prereqs download-voices download-voice-medium download-voice-high
 
 # Binary name
 BINARY_NAME=cortex
@@ -33,6 +33,10 @@ ifeq ($(UNAME_S),Linux)
 		PACKAGE_MANAGER = apt
 	endif
 endif
+
+# Piper voices configuration
+VOICE_DIR=$(HOME)/.local/share/piper/voices
+VOICE_BASE_URL=https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -162,5 +166,79 @@ lint: ## Run linter
 
 # Quick build and test
 quick: fmt build test ## Format, build, and test
+
+# Voice download helpers
+download-voice-medium: ## Download all medium quality en_US voices
+	@echo "📥 Downloading medium quality Piper voices..."
+	@mkdir -p $(VOICE_DIR)
+	@echo ""
+	@echo "Downloading lessac (female, medium)..."
+	@curl -L -o $(VOICE_DIR)/en_US-lessac-medium.onnx $(VOICE_BASE_URL)/lessac/medium/en_US-lessac-medium.onnx
+	@curl -L -o $(VOICE_DIR)/en_US-lessac-medium.onnx.json $(VOICE_BASE_URL)/lessac/medium/en_US-lessac-medium.onnx.json
+	@echo "✅ lessac-medium downloaded"
+	@echo ""
+	@echo "Downloading amy (female, medium)..."
+	@curl -L -o $(VOICE_DIR)/en_US-amy-medium.onnx $(VOICE_BASE_URL)/amy/medium/en_US-amy-medium.onnx
+	@curl -L -o $(VOICE_DIR)/en_US-amy-medium.onnx.json $(VOICE_BASE_URL)/amy/medium/en_US-amy-medium.onnx.json
+	@echo "✅ amy-medium downloaded"
+	@echo ""
+	@echo "Downloading joe (male, medium)..."
+	@curl -L -o $(VOICE_DIR)/en_US-joe-medium.onnx $(VOICE_BASE_URL)/joe/medium/en_US-joe-medium.onnx
+	@curl -L -o $(VOICE_DIR)/en_US-joe-medium.onnx.json $(VOICE_BASE_URL)/joe/medium/en_US-joe-medium.onnx.json
+	@echo "✅ joe-medium downloaded"
+	@echo ""
+	@echo "Downloading kristin (female, medium)..."
+	@curl -L -o $(VOICE_DIR)/en_US-kristin-medium.onnx $(VOICE_BASE_URL)/kristin/medium/en_US-kristin-medium.onnx
+	@curl -L -o $(VOICE_DIR)/en_US-kristin-medium.onnx.json $(VOICE_BASE_URL)/kristin/medium/en_US-kristin-medium.onnx.json
+	@echo "✅ kristin-medium downloaded"
+	@echo ""
+	@echo "Downloading ryan (male, medium)..."
+	@curl -L -o $(VOICE_DIR)/en_US-ryan-medium.onnx $(VOICE_BASE_URL)/ryan/medium/en_US-ryan-medium.onnx
+	@curl -L -o $(VOICE_DIR)/en_US-ryan-medium.onnx.json $(VOICE_BASE_URL)/ryan/medium/en_US-ryan-medium.onnx.json
+	@echo "✅ ryan-medium downloaded"
+	@echo ""
+	@echo "✅ All medium quality voices downloaded to $(VOICE_DIR)"
+
+download-voice-high: ## Download all high quality en_US voices
+	@echo "📥 Downloading high quality Piper voices..."
+	@mkdir -p $(VOICE_DIR)
+	@echo ""
+	@echo "Downloading ryan (male, high)..."
+	@curl -L -o $(VOICE_DIR)/en_US-ryan-high.onnx $(VOICE_BASE_URL)/ryan/high/en_US-ryan-high.onnx
+	@curl -L -o $(VOICE_DIR)/en_US-ryan-high.onnx.json $(VOICE_BASE_URL)/ryan/high/en_US-ryan-high.onnx.json
+	@echo "✅ ryan-high downloaded"
+	@echo ""
+	@echo "Downloading ljspeech (female, high)..."
+	@curl -L -o $(VOICE_DIR)/en_US-ljspeech-high.onnx $(VOICE_BASE_URL)/ljspeech/high/en_US-ljspeech-high.onnx
+	@curl -L -o $(VOICE_DIR)/en_US-ljspeech-high.onnx.json $(VOICE_BASE_URL)/ljspeech/high/en_US-ljspeech-high.onnx.json
+	@echo "✅ ljspeech-high downloaded"
+	@echo ""
+	@echo "Downloading libritts_r (multi-speaker, high)..."
+	@curl -L -o $(VOICE_DIR)/en_US-libritts_r-high.onnx $(VOICE_BASE_URL)/libritts_r/high/en_US-libritts_r-high.onnx
+	@curl -L -o $(VOICE_DIR)/en_US-libritts_r-high.onnx.json $(VOICE_BASE_URL)/libritts_r/high/en_US-libritts_r-high.onnx.json
+	@echo "✅ libritts_r-high downloaded"
+	@echo ""
+	@echo "✅ All high quality voices downloaded to $(VOICE_DIR)"
+
+download-voices: download-voice-medium download-voice-high ## Download all medium and high quality voices
+	@echo ""
+	@echo "🎉 All Piper voices downloaded successfully!"
+	@echo ""
+	@echo "📁 Voices installed in: $(VOICE_DIR)"
+	@echo ""
+	@echo "Available voices:"
+	@echo "  Medium Quality:"
+	@echo "    - lessac (female)"
+	@echo "    - amy (female)"
+	@echo "    - joe (male)"
+	@echo "    - kristin (female)"
+	@echo "    - ryan (male)"
+	@echo ""
+	@echo "  High Quality:"
+	@echo "    - ryan (male)"
+	@echo "    - ljspeech (female)"
+	@echo "    - libritts_r (multi-speaker)"
+	@echo ""
+	@echo "💡 Update your .cortex.yaml to use these voices!"
 
 .DEFAULT_GOAL := help

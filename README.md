@@ -109,6 +109,13 @@ cortex generate "Space exploration" \
   --output ./videos \
   --voice en_US-lessac-medium \
   --background gradient
+
+# Use only high-quality voices (better audio quality)
+cortex generate "Quantum computing explained" \
+  --high-voices-only
+
+# Short form flag
+cortex generate "Climate change science" -H
 ```
 
 ### Configuration
@@ -122,7 +129,14 @@ models:
     model: llama3
   tts:
     engine: piper
-    voice: ~/.local/share/piper/voices/en_US-lessac-medium.onnx  # Path to .onnx model
+    # Default voice
+    voice: ~/.local/share/piper/voices/en_US-lessac-medium.onnx
+
+    # Multiple voices (optional) - rotates through voices for different segments
+    voices:
+      narrator: ~/.local/share/piper/voices/en_US-lessac-medium.onnx
+      host: ~/.local/share/piper/voices/en_US-ryan-high.onnx
+      expert: ~/.local/share/piper/voices/en_US-amy-medium.onnx
 
 output:
   directory: ./output
@@ -135,10 +149,20 @@ output:
 ### Commands
 
 ```bash
+# Model management
 cortex start         # Start local AI models
 cortex stop          # Stop local AI models
 cortex status        # Check model health
+
+# Content generation
 cortex generate      # Generate script, audio, and video
+
+# Voice management
+make download-voices         # Download all medium + high quality voices
+make download-voice-medium   # Download only medium quality voices
+make download-voice-high     # Download only high quality voices
+
+# Help
 cortex --help        # Show all commands
 ```
 
@@ -178,6 +202,11 @@ make check-prereqs
 
 # Install missing prerequisites only
 make install-prereqs
+
+# Download Piper voices
+make download-voices          # All voices (medium + high)
+make download-voice-medium    # Only medium quality
+make download-voice-high      # Only high quality
 
 # Install Go dependencies
 make deps
@@ -226,6 +255,100 @@ output:
     waveform: true  # or false
 ```
 
+## Multiple Voice Support
+
+Cortex supports using multiple voices that automatically rotate between segments, creating a more dynamic and engaging video.
+
+### Configuration
+
+Add multiple voices to your `.cortex.yaml`:
+
+```yaml
+models:
+  tts:
+    engine: piper
+    voice: ~/.local/share/piper/voices/en_US-lessac-medium.onnx  # Default fallback
+    voices:
+      narrator: ~/.local/share/piper/voices/en_US-lessac-medium.onnx  # Female voice
+      host: ~/.local/share/piper/voices/en_US-ryan-high.onnx         # Male voice
+      expert: ~/.local/share/piper/voices/en_US-amy-medium.onnx      # Alternative female
+```
+
+### How It Works
+
+1. **Automatic Rotation**: Each script segment is assigned a different voice in rotation
+2. **Speaker Names**: The names (narrator, host, expert) are used for logging during generation
+3. **Fallback**: If voices aren't configured, uses the default `voice` setting
+4. **Quality Filtering**: Use `--high-voices-only` or `-H` flag to use only high-quality voices (filters voices with "-high" in the path)
+
+### Example Output
+
+```
+🎙️  Generating audio for 6 segments...
+  [1/6] narrator: Generating audio...
+  [2/6] host: Generating audio...
+  [3/6] expert: Generating audio...
+  [4/6] narrator: Generating audio...
+  ...
+```
+
+### Downloading Multiple Voices
+
+**Easy Way (Recommended):**
+
+```bash
+# Download all medium and high quality voices
+make download-voices
+
+# Or download specific quality levels
+make download-voice-medium   # ~100MB - Faster, smaller files
+make download-voice-high     # ~150MB - Better quality, larger files
+```
+
+This will download:
+- **Medium Quality (5 voices)**: lessac, amy, joe, kristin, ryan
+- **High Quality (3 voices)**: ryan, ljspeech, libritts_r
+
+**Manual Download (if needed):**
+
+```bash
+cd ~/.local/share/piper/voices
+
+# Female voice (lessac)
+wget https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx
+wget https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx.json
+
+# Male voice (ryan)
+wget https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/ryan/high/en_US-ryan-high.onnx
+wget https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/ryan/high/en_US-ryan-high.onnx.json
+
+# More voices available at: https://huggingface.co/rhasspy/piper-voices/tree/main/en/en_US
+```
+
+## Command Line Flags
+
+### Generate Command
+
+- `-o, --output <dir>` - Output directory for generated files (default: `./output`)
+- `-v, --voice <path>` - Specific TTS voice to use (overrides config)
+- `-b, --background <style>` - Video background style: `gradient`, `solid`, or `image` (default: `gradient`)
+- `-H, --high-voices-only` - Use only high-quality voices from configuration
+- `--config <file>` - Custom config file path
+- `--verbose` - Enable verbose output
+
+### Examples
+
+```bash
+# Use high-quality voices only
+cortex generate "AI Ethics" -H
+
+# Custom output directory
+cortex generate "Machine Learning" -o ~/videos
+
+# Combine multiple flags
+cortex generate "Deep Learning" -H -o ./output -b solid
+```
+
 ## Troubleshooting
 
 **Ollama not running:**
@@ -239,6 +362,10 @@ ollama serve
 
 **FFmpeg errors:**
 - Install/update FFmpeg: `brew install ffmpeg`
+
+**No high-quality voices available:**
+- Download high-quality voices: `make download-voice-high`
+- Or download all voices: `make download-voices`
 
 ## Roadmap
 

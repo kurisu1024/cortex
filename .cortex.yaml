@@ -7,9 +7,23 @@ models:
     model: llama3
   tts:
     engine: piper
-    # Path to Piper voice model (.onnx file)
-    # Download from: https://huggingface.co/rhasspy/piper-voices
+    # Default voice (used if no multiple voices configured)
     voice: ~/.local/share/piper/voices/en_US-lessac-medium.onnx
+
+    # Multiple voices for different speakers (optional)
+    # When configured, Cortex will rotate between these voices for each segment
+    # Download all voices with: make download-voices
+    # Or download specific quality: make download-voice-medium OR make download-voice-high
+    voices:
+      narrator: ~/.local/share/piper/voices/en_US-lessac-medium.onnx    # Female, medium
+      host: ~/.local/share/piper/voices/en_US-ryan-high.onnx            # Male, high
+      expert: ~/.local/share/piper/voices/en_US-amy-medium.onnx         # Female, medium
+      interviewer: ~/.local/share/piper/voices/en_US-joe-medium.onnx    # Male, medium
+      analyst: ~/.local/share/piper/voices/en_US-ljspeech-high.onnx     # Female, high
+      # Additional available voices (after running make download-voices):
+      # - ~/.local/share/piper/voices/en_US-kristin-medium.onnx         # Female, medium
+      # - ~/.local/share/piper/voices/en_US-ryan-medium.onnx            # Male, medium
+      # - ~/.local/share/piper/voices/en_US-libritts_r-high.onnx        # Multi-speaker, high
 
 output:
   directory: ./output

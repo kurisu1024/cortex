@@ -39,3 +39,8 @@ output/
 concat_list.txt
 *.tmp
 *.log
+
+# Piper voice models (downloaded via make download-voices)
+# These are large binary files that should be downloaded locally
+.local/share/piper/voices/*.onnx
+.local/share/piper/voices/*.json
