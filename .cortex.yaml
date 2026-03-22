@@ -1,0 +1,17 @@
+# Cortex Configuration File
+# This file contains default settings for the Cortex CLI tool
+
+models:
+  ollama:
+    host: http://localhost:11434
+    model: llama3
+  tts:
+    engine: piper
+    voice: en_US-lessac-medium
+
+output:
+  directory: ./output
+  video:
+    format: mp4
+    background: gradient  # Options: gradient, solid, image
+    waveform: true        # Show audio waveform visualization

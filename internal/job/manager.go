@@ -1,0 +1,178 @@
+package job
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"time"
+
+	"github.com/topher/cortex/internal/audio"
+	"github.com/topher/cortex/internal/models"
+	"github.com/topher/cortex/internal/script"
+	"github.com/topher/cortex/internal/ui"
+	"github.com/topher/cortex/internal/video"
+)
+
+// Status represents job status
+type Status string
+
+const (
+	StatusPending    Status = "pending"
+	StatusRunning    Status = "running"
+	StatusCompleted  Status = "completed"
+	StatusFailed     Status = "failed"
+)
+
+// Job represents a generation job
+type Job struct {
+	ID         string
+	Topic      string
+	Status     Status
+	Progress   *Progress
+	OutputDir  string
+	Voice      string
+	Background string
+	CreatedAt  time.Time
+	StartedAt  *time.Time
+	CompletedAt *time.Time
+	Error      error
+}
+
+// Manager handles job lifecycle
+type Manager struct {
+	modelManager *models.Manager
+	jobs         map[string]*Job
+	ui           *ui.Terminal
+}
+
+// NewManager creates a new job manager
+func NewManager() *Manager {
+	return &Manager{
+		modelManager: models.NewManager(),
+		jobs:         make(map[string]*Job),
+		ui:           ui.NewTerminal(),
+	}
+}
+
+// CreateJob creates a new job
+func (m *Manager) CreateJob(topic, outputDir, voice, background string) (string, error) {
+	jobID := fmt.Sprintf("job_%d", time.Now().Unix())
+
+	job := &Job{
+		ID:         jobID,
+		Topic:      topic,
+		Status:     StatusPending,
+		Progress:   NewProgress(),
+		OutputDir:  outputDir,
+		Voice:      voice,
+		Background: background,
+		CreatedAt:  time.Now(),
+	}
+
+	m.jobs[jobID] = job
+
+	return jobID, nil
+}
+
+// RunJob executes a job
+func (m *Manager) RunJob(jobID string) error {
+	job, exists := m.jobs[jobID]
+	if !exists {
+		return fmt.Errorf("job not found: %s", jobID)
+	}
+
+	job.Status = StatusRunning
+	now := time.Now()
+	job.StartedAt = &now
+
+	m.ui.ShowHeader()
+	m.ui.ShowJobStart(job.Topic)
+
+	// Create output directory
+	if err := os.MkdirAll(job.OutputDir, 0755); err != nil {
+		return m.failJob(job, fmt.Errorf("failed to create output directory: %w", err))
+	}
+
+	// Step 1: Generate script
+	job.Progress.SetStep("Generating script", 1, 5)
+	m.ui.ShowProgress(1, 5, "Generating script", "", job.Progress.StartTime)
+
+	scriptGen := script.NewGenerator(m.modelManager.GetLLM())
+	scr, err := scriptGen.Generate(job.Topic)
+	if err != nil {
+		return m.failJob(job, fmt.Errorf("script generation failed: %w", err))
+	}
+
+	// Step 2: Generate audio segments
+	job.Progress.SetStep("Generating audio segments", 2, 5)
+	m.ui.ShowProgress(2, 5, "Generating audio segments", "", job.Progress.StartTime)
+
+	audioGen := audio.NewGenerator(m.modelManager.GetTTS())
+	audioPaths, err := audioGen.GenerateFromScript(scr, job.OutputDir)
+	if err != nil {
+		return m.failJob(job, fmt.Errorf("audio generation failed: %w", err))
+	}
+
+	// Step 3: Combine audio
+	job.Progress.SetStep("Combining audio segments", 3, 5)
+	m.ui.ShowProgress(3, 5, "Combining audio segments", "", job.Progress.StartTime)
+
+	audioCombiner := audio.NewCombiner()
+	finalAudioPath := filepath.Join(job.OutputDir, "final_audio.wav")
+	if err := audioCombiner.Combine(audioPaths, finalAudioPath); err != nil {
+		return m.failJob(job, fmt.Errorf("audio combination failed: %w", err))
+	}
+
+	// Step 4: Generate video
+	job.Progress.SetStep("Generating video", 4, 5)
+	m.ui.ShowProgress(4, 5, "Generating video", "", job.Progress.StartTime)
+
+	videoGen := video.NewGenerator()
+	videoPath := filepath.Join(job.OutputDir, "output.mp4")
+	if err := videoGen.GenerateFromAudio(finalAudioPath, videoPath, job.Background, true); err != nil {
+		return m.failJob(job, fmt.Errorf("video generation failed: %w", err))
+	}
+
+	// Step 5: Complete
+	job.Progress.SetStep("Finalizing", 5, 5)
+	m.ui.ShowProgress(5, 5, "Finalizing", "", job.Progress.StartTime)
+
+	job.Status = StatusCompleted
+	completedAt := time.Now()
+	job.CompletedAt = &completedAt
+
+	m.ui.ShowSuccess(videoPath)
+
+	return nil
+}
+
+// failJob marks a job as failed
+func (m *Manager) failJob(job *Job, err error) error {
+	job.Status = StatusFailed
+	job.Error = err
+	completedAt := time.Now()
+	job.CompletedAt = &completedAt
+
+	m.ui.ShowError(err.Error())
+
+	return err
+}
+
+// GetJob retrieves a job by ID
+func (m *Manager) GetJob(jobID string) (*Job, error) {
+	job, exists := m.jobs[jobID]
+	if !exists {
+		return nil, fmt.Errorf("job not found: %s", jobID)
+	}
+
+	return job, nil
+}
+
+// ListJobs returns all jobs
+func (m *Manager) ListJobs() []*Job {
+	jobs := make([]*Job, 0, len(m.jobs))
+	for _, job := range m.jobs {
+		jobs = append(jobs, job)
+	}
+	return jobs
+}
