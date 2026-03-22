@@ -4,7 +4,7 @@
 models:
   ollama:
     host: http://localhost:11434
-    model: llama3
+    model: llama3.2
   tts:
     engine: piper
     # Default voice (used if no multiple voices configured)

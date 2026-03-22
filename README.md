@@ -90,6 +90,21 @@ The `make install` command will:
 3. Build the Cortex binary
 4. Install to `$GOPATH/bin`
 
+### Download Models
+
+After installation, download the required AI models:
+
+```bash
+# Download Piper TTS voices (required for text-to-speech)
+make download-voices
+
+# Download Ollama LLM model (required for script generation)
+make download-model
+
+# Start Ollama service
+ollama serve
+```
+
 ## Usage
 
 ### Check Model Status

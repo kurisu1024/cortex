@@ -93,6 +93,9 @@ func (l *LLMClient) Generate(prompt string) (string, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
+		if resp.StatusCode == http.StatusNotFound {
+			return "", fmt.Errorf("ollama returned status %d: %s\n\nℹ️  The model '%s' is not installed. Download it with:\n   ollama pull %s\n\nOr use the make command:\n   make download-model", resp.StatusCode, string(body), l.model, l.model)
+		}
 		return "", fmt.Errorf("ollama returned status %d: %s", resp.StatusCode, string(body))
 	}
 

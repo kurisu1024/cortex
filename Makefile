@@ -1,4 +1,4 @@
-.PHONY: build install clean test run help check-prereqs install-prereqs download-voices download-voice-medium download-voice-high
+.PHONY: build install clean test run help check-prereqs install-prereqs download-voices download-voice-medium download-voice-high download-model
 
 # Binary name
 BINARY_NAME=cortex
@@ -113,12 +113,8 @@ endif
 	@echo "✅ Prerequisites installation complete!"
 	@echo ""
 	@echo "📝 Next steps:"
-	@echo "  1. Download a Piper voice model:"
-	@echo "     mkdir -p $(HOME)/.local/share/piper/voices"
-	@echo "     cd $(HOME)/.local/share/piper/voices"
-	@echo "     wget https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx"
-	@echo "     wget https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx.json"
-	@echo "  2. Pull an Ollama model: ollama pull llama3"
+	@echo "  1. Download Piper voices: make download-voices"
+	@echo "  2. Download Ollama model: make download-model"
 	@echo "  3. Start Ollama: ollama serve"
 	@echo ""
 
@@ -240,5 +236,12 @@ download-voices: download-voice-medium download-voice-high ## Download all mediu
 	@echo "    - libritts_r (multi-speaker)"
 	@echo ""
 	@echo "💡 Update your .cortex.yaml to use these voices!"
+
+download-model: ## Download the default Ollama model (llama3.2)
+	@echo "📥 Downloading Ollama model llama3.2..."
+	@ollama pull llama3.2
+	@echo "✅ llama3.2 model downloaded successfully!"
+	@echo ""
+	@echo "💡 You can now use 'cortex generate' to create videos"
 
 .DEFAULT_GOAL := help

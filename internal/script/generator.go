@@ -2,7 +2,6 @@ package script
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/kutidu2048/cortex/internal/models"
@@ -156,24 +155,37 @@ Begin:`, topic, g.duration, targetWords)
 func (g *Generator) parseSegments(text string) []Segment {
 	var segments []Segment
 
-	// Try to parse [SEGMENT N] format
-	segmentRegex := regexp.MustCompile(`\[SEGMENT\s+(\d+)\]\s*\n([\s\S]*?)(?=\[SEGMENT|\z)`)
-	matches := segmentRegex.FindAllStringSubmatch(text, -1)
+	// Try to parse [SEGMENT N] format by splitting on [SEGMENT markers
+	if strings.Contains(text, "[SEGMENT") {
+		// Split by [SEGMENT markers
+		parts := strings.Split(text, "[SEGMENT")
 
-	if len(matches) > 0 {
-		for _, match := range matches {
-			if len(match) >= 3 {
-				segment := Segment{
-					Index:   len(segments),
-					Speaker: g.assignSpeaker(len(segments)),
-					Text:    strings.TrimSpace(match[2]),
+		for _, part := range parts {
+			part = strings.TrimSpace(part)
+			if part == "" {
+				continue
+			}
+
+			// Extract segment number and content
+			// Format: "1]\nContent here..."
+			lines := strings.SplitN(part, "\n", 2)
+			if len(lines) >= 2 {
+				content := strings.TrimSpace(lines[1])
+				if content != "" {
+					segment := Segment{
+						Index:   len(segments),
+						Speaker: g.assignSpeaker(len(segments)),
+						Text:    content,
+					}
+					segment.VoicePath = g.getVoicePathForSpeaker(segment.Speaker)
+					segments = append(segments, segment)
 				}
-				segment.VoicePath = g.getVoicePathForSpeaker(segment.Speaker)
-				segments = append(segments, segment)
 			}
 		}
-	} else {
-		// If no segments found, split by paragraphs
+	}
+
+	// If no segments found, split by paragraphs
+	if len(segments) == 0 {
 		paragraphs := strings.Split(text, "\n\n")
 		for _, para := range paragraphs {
 			para = strings.TrimSpace(para)
