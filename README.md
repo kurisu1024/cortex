@@ -40,11 +40,21 @@
 
 2. **Piper TTS** - For text-to-speech
    ```bash
-   # macOS
-   brew install piper-tts
+   # Download Piper binary from GitHub releases
+   # https://github.com/rhasspy/piper/releases
 
-   # Linux
-   # Download from: https://github.com/rhasspy/piper
+   # macOS example:
+   mkdir -p ~/.local/bin
+   curl -L https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_macos_x64.tar.gz -o piper.tar.gz
+   tar -xzf piper.tar.gz
+   cp piper/piper ~/.local/bin/
+   export PATH="$HOME/.local/bin:$PATH"
+
+   # Download a voice model
+   mkdir -p ~/.local/share/piper/voices
+   cd ~/.local/share/piper/voices
+   wget https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx
+   wget https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx.json
    ```
 
 3. **FFmpeg** - For audio/video processing
@@ -63,13 +73,22 @@
 git clone https://github.com/topher/cortex.git
 cd cortex
 
-# Build and install
+# Check prerequisites
+make check-prereqs
+
+# Install everything (prerequisites + binary)
 make install
 
-# Or just build
+# Or just build (without installing prerequisites)
 make build
 ./bin/cortex
 ```
+
+The `make install` command will:
+1. Check if prerequisites are installed
+2. Automatically install missing prerequisites (FFmpeg, Ollama, Piper)
+3. Build the Cortex binary
+4. Install to `$GOPATH/bin`
 
 ## Usage
 
@@ -103,7 +122,7 @@ models:
     model: llama3
   tts:
     engine: piper
-    voice: en_US-lessac-medium
+    voice: ~/.local/share/piper/voices/en_US-lessac-medium.onnx  # Path to .onnx model
 
 output:
   directory: ./output
@@ -154,7 +173,13 @@ cortex/
 ## Development
 
 ```bash
-# Install dependencies
+# Check prerequisites
+make check-prereqs
+
+# Install missing prerequisites only
+make install-prereqs
+
+# Install Go dependencies
 make deps
 
 # Format code
@@ -168,6 +193,9 @@ make build
 
 # Run linter
 make lint
+
+# Quick: format, build, and test
+make quick
 ```
 
 ## Environment Variables

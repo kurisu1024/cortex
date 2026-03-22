@@ -52,6 +52,7 @@ func (t *TTSClient) GenerateAudio(text, outputPath string) error {
 // generateWithPiper uses Piper TTS to generate audio
 func (t *TTSClient) generateWithPiper(text, outputPath string) error {
 	// Piper command: echo "text" | piper --model voice.onnx --output_file output.wav
+	// Note: t.voice should be the path to the .onnx model file
 	cmd := exec.Command("piper", "--model", t.voice, "--output_file", outputPath)
 
 	// Create a pipe for stdin

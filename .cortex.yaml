@@ -7,7 +7,9 @@ models:
     model: llama3
   tts:
     engine: piper
-    voice: en_US-lessac-medium
+    # Path to Piper voice model (.onnx file)
+    # Download from: https://huggingface.co/rhasspy/piper-voices
+    voice: ~/.local/share/piper/voices/en_US-lessac-medium.onnx
 
 output:
   directory: ./output
