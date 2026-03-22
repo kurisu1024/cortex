@@ -121,7 +121,17 @@ func (m *Manager) RunJob(jobID string) error {
 		scriptGen.SetVoices(voices)
 	}
 
+	// Show dancing Cortex while generating script
+	stopCortex := make(chan bool)
+	go m.animateCortex("🧠 Generating script with AI...", stopCortex)
+
 	scr, err := scriptGen.Generate(job.Topic)
+
+	// Stop animation
+	stopCortex <- true
+	time.Sleep(100 * time.Millisecond) // Give goroutine time to stop
+	fmt.Print("\033[4A\033[J")          // Move up 4 lines and clear to end
+
 	if err != nil {
 		return m.failJob(job, fmt.Errorf("script generation failed: %w", err))
 	}
@@ -217,4 +227,25 @@ func (m *Manager) filterHighQualityVoices(voices map[string]string) map[string]s
 	}
 
 	return filtered
+}
+
+// animateCortex shows the dancing Cortex robot during long operations
+func (m *Manager) animateCortex(message string, stop chan bool) {
+	frame := 0
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-stop:
+			return
+		case <-ticker.C:
+			// Clear previous robot (4 lines)
+			if frame > 0 {
+				fmt.Print("\033[4A") // Move up 4 lines
+			}
+			m.ui.ShowCortexWithMessage(message, frame)
+			frame++
+		}
+	}
 }

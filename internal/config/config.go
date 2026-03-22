@@ -49,10 +49,16 @@ func Load() (*Config, error) {
 
 	// Set defaults
 	viper.SetDefault("models.ollama.host", "http://localhost:11434")
-	viper.SetDefault("models.ollama.model", "llama3")
-	viper.SetDefault("models.tts.engine", "piper")
-	viper.SetDefault("models.tts.voice", "~/.local/share/piper/voices/en_US-lessac-medium.onnx")
-	viper.SetDefault("models.tts.voices", map[string]string{})
+	viper.SetDefault("models.ollama.model", "llama3.2")
+	viper.SetDefault("models.tts.engine", "say")       // Use macOS say by default
+	viper.SetDefault("models.tts.voice", "Samantha")   // Default macOS voice
+	viper.SetDefault("models.tts.voices", map[string]string{
+		"narrator":    "Samantha", // Female, natural
+		"host":        "Alex",     // Male, clear
+		"expert":      "Victoria", // Female, professional
+		"interviewer": "Daniel",   // Male, British
+		"analyst":     "Karen",    // Female, Australian
+	})
 	viper.SetDefault("output.directory", "./output")
 	viper.SetDefault("output.duration", 10) // 10 minutes default
 	viper.SetDefault("output.video.format", "mp4")

@@ -118,26 +118,34 @@ func (t *Terminal) ShowSuccess(outputPath string) {
 
 // ShowError displays error message
 func (t *Terminal) ShowError(message string) {
+	boxWidth := 62 // Total width between ║ characters
 	fmt.Printf("\n%s%s╔══════════════════════════════════════════════════════════════╗%s\n", Bold, Red, Reset)
 	fmt.Printf("%s%s║  ✗ ERROR                                                      ║%s\n", Bold, Red, Reset)
 	fmt.Printf("%s%s╠══════════════════════════════════════════════════════════════╣%s\n", Bold, Red, Reset)
 
 	// Split long error messages
 	words := strings.Split(message, " ")
-	line := "║  "
+	line := ""
+	maxLineLen := boxWidth - 4 // Subtract 4 for "║  " and " ║"
+
 	for _, word := range words {
-		if len(line)+len(word)+1 > 60 {
-			// Pad line to 64 chars
-			padding := 64 - len(line) - 1
-			fmt.Printf("%s%s%s%s ║%s\n", Bold, Red, line, strings.Repeat(" ", padding), Reset)
-			line = "║  " + word + " "
+		if len(line)+len(word)+1 > maxLineLen {
+			// Print current line with proper padding
+			padding := maxLineLen - len(line)
+			fmt.Printf("%s%s║  %s%s ║%s\n", Bold, Red, line, strings.Repeat(" ", padding), Reset)
+			line = word
 		} else {
-			line += word + " "
+			if line != "" {
+				line += " "
+			}
+			line += word
 		}
 	}
-	if len(line) > 3 {
-		padding := 64 - len(line) - 1
-		fmt.Printf("%s%s%s%s ║%s\n", Bold, Red, line, strings.Repeat(" ", padding), Reset)
+
+	// Print last line
+	if line != "" {
+		padding := maxLineLen - len(line)
+		fmt.Printf("%s%s║  %s%s ║%s\n", Bold, Red, line, strings.Repeat(" ", padding), Reset)
 	}
 
 	fmt.Printf("%s%s╚══════════════════════════════════════════════════════════════╝%s\n\n", Bold, Red, Reset)
@@ -156,6 +164,61 @@ func (t *Terminal) ShowInfo(message string) {
 // ShowWarning displays warning message
 func (t *Terminal) ShowWarning(message string) {
 	fmt.Printf("%s⚠ %s%s\n", Yellow, message, Reset)
+}
+
+// Cortex robot animation frames
+var cortexFrames = []string{
+	// Frame 1: Arms up
+	`    🤖
+   \║║/
+    ║║
+   /  \   `,
+	// Frame 2: Arms out
+	`    🤖
+   -║║-
+    ║║
+   /  \   `,
+	// Frame 3: Arms down
+	`    🤖
+   /║║\
+    ║║
+   \  /   `,
+	// Frame 4: Arms wave
+	`    🤖
+   /║║~
+    ║║
+   /  \   `,
+}
+
+// ShowCortexRobot displays the dancing Cortex robot
+func (t *Terminal) ShowCortexRobot(frame int) string {
+	frameIndex := frame % len(cortexFrames)
+	lines := strings.Split(cortexFrames[frameIndex], "\n")
+
+	var result strings.Builder
+	for _, line := range lines {
+		result.WriteString(fmt.Sprintf("%s%s%s\n", Cyan, line, Reset))
+	}
+	return result.String()
+}
+
+// ClearLines clears N lines up from current position
+func (t *Terminal) ClearLines(n int) {
+	for i := 0; i < n; i++ {
+		fmt.Print("\033[1A\033[2K") // Move up and clear line
+	}
+}
+
+// ShowCortexWithMessage displays Cortex robot next to a message
+func (t *Terminal) ShowCortexWithMessage(message string, frame int) {
+	robot := strings.Split(cortexFrames[frame%len(cortexFrames)], "\n")
+
+	// Print message with robot on the right
+	fmt.Printf("%s%-50s%s%s%s\n", Cyan, message, Reset, Cyan, robot[0])
+	for i := 1; i < len(robot); i++ {
+		fmt.Printf("%s%-50s%s%s%s\n", "", "", Reset, Cyan, robot[i])
+	}
+	fmt.Print(Reset)
 }
 
 // ShowModelStatus displays model status in a styled box

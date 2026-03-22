@@ -61,14 +61,12 @@ func (g *Generator) generateWithGradient(audioPath, outputPath string, showWavef
 
 	if showWaveform {
 		// Create gradient background with waveform overlay
-		filterComplex = "[0:a]showwaves=s=1920x1080:mode=line:rate=25:colors=0x00FF00[waves];" +
-			"color=c=0x1a1a2e:s=1920x1080[bg];" +
-			"[bg]gradients=s=1920x1080:c0=0x0f0c29:c1=0x302b63:c2=0x24243e:x0=0:y0=0:x1=1920:y1=1080[gradient];" +
+		filterComplex = "gradients=s=1920x1080:c0=0x0f0c29:c1=0x302b63:c2=0x24243e[gradient];" +
+			"[0:a]showwaves=s=1920x1080:mode=line:rate=25:colors=0x00FF00[waves];" +
 			"[gradient][waves]blend=all_mode=screen:all_opacity=0.6"
 	} else {
 		// Just gradient background
-		filterComplex = "color=c=0x1a1a2e:s=1920x1080[bg];" +
-			"[bg]gradients=s=1920x1080:c0=0x0f0c29:c1=0x302b63:c2=0x24243e:x0=0:y0=0:x1=1920:y1=1080"
+		filterComplex = "gradients=s=1920x1080:c0=0x0f0c29:c1=0x302b63:c2=0x24243e"
 	}
 
 	cmd := exec.Command("ffmpeg",

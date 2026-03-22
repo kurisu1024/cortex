@@ -6,24 +6,33 @@ models:
     host: http://localhost:11434
     model: llama3.2
   tts:
-    engine: piper
-    # Default voice (used if no multiple voices configured)
-    voice: ~/.local/share/piper/voices/en_US-lessac-medium.onnx
+    # TTS Engine: "say" (macOS native) or "piper" (requires installation)
+    engine: say
 
-    # Multiple voices for different speakers (optional)
-    # When configured, Cortex will rotate between these voices for each segment
-    # Download all voices with: make download-voices
-    # Or download specific quality: make download-voice-medium OR make download-voice-high
+    # Default voice
+    voice: Samantha  # macOS voice name
+
+    # Multiple voices for different speakers
+    # macOS native voices (no installation required):
     voices:
-      narrator: ~/.local/share/piper/voices/en_US-lessac-medium.onnx    # Female, medium
-      host: ~/.local/share/piper/voices/en_US-ryan-high.onnx            # Male, high
-      expert: ~/.local/share/piper/voices/en_US-amy-medium.onnx         # Female, medium
-      interviewer: ~/.local/share/piper/voices/en_US-joe-medium.onnx    # Male, medium
-      analyst: ~/.local/share/piper/voices/en_US-ljspeech-high.onnx     # Female, high
-      # Additional available voices (after running make download-voices):
-      # - ~/.local/share/piper/voices/en_US-kristin-medium.onnx         # Female, medium
-      # - ~/.local/share/piper/voices/en_US-ryan-medium.onnx            # Male, medium
-      # - ~/.local/share/piper/voices/en_US-libritts_r-high.onnx        # Multi-speaker, high
+      narrator: Samantha    # Female, natural and clear
+      host: Alex            # Male, clear and friendly
+      expert: Victoria      # Female, professional
+      interviewer: Daniel   # Male, British accent
+      analyst: Karen        # Female, Australian accent
+
+    # To use Piper TTS instead, uncomment below and set engine to "piper":
+    # engine: piper
+    # voice: ~/.local/share/piper/voices/en_US-lessac-medium.onnx
+    # voices:
+    #   narrator: ~/.local/share/piper/voices/en_US-lessac-medium.onnx
+    #   host: ~/.local/share/piper/voices/en_US-ryan-high.onnx
+    #   expert: ~/.local/share/piper/voices/en_US-amy-medium.onnx
+    #   interviewer: ~/.local/share/piper/voices/en_US-joe-medium.onnx
+    #   analyst: ~/.local/share/piper/voices/en_US-ljspeech-high.onnx
+    #
+    # Download Piper voices with: make download-voices
+    # More voices: say -v '?' | grep en_US
 
 output:
   directory: ./output
