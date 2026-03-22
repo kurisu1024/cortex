@@ -32,10 +32,10 @@ type TTSConfig struct {
 
 // ImageConfig holds AI image generation configuration
 type ImageConfig struct {
-	ModelID   string `mapstructure:"model_id"`   // Stable Diffusion model ID
-	ArtStyle  string `mapstructure:"art_style"`  // Default art style for prompts
-	Steps     int    `mapstructure:"steps"`      // Inference steps (quality vs speed)
-	Guidance  float64 `mapstructure:"guidance"`  // Guidance scale (how closely to follow prompt)
+	ModelID  string  `mapstructure:"model_id"`  // Stable Diffusion model ID
+	ArtStyle string  `mapstructure:"art_style"` // Default art style for prompts
+	Steps    int     `mapstructure:"steps"`     // Inference steps (quality vs speed)
+	Guidance float64 `mapstructure:"guidance"`  // Guidance scale (how closely to follow prompt)
 }
 
 // OutputConfig holds output-related configuration
@@ -59,14 +59,14 @@ func Load() (*Config, error) {
 	// Set defaults
 	viper.SetDefault("models.ollama.host", "http://localhost:11434")
 	viper.SetDefault("models.ollama.model", "llama3.2")
-	viper.SetDefault("models.tts.engine", "edgetts")                 // Use Edge TTS by default (high quality)
-	viper.SetDefault("models.tts.voice", "en-US-AriaNeural")         // Default Edge TTS voice
+	viper.SetDefault("models.tts.engine", "edgetts")         // Use Edge TTS by default (high quality)
+	viper.SetDefault("models.tts.voice", "en-US-AriaNeural") // Default Edge TTS voice
 	viper.SetDefault("models.tts.voices", map[string]string{
-		"narrator":    "en-US-AriaNeural",    // Female, professional, news-style
-		"host":        "en-US-GuyNeural",     // Male, passionate
-		"expert":      "en-US-JennyNeural",   // Female, friendly
-		"interviewer": "en-GB-RyanNeural",    // Male, British
-		"analyst":     "en-US-EmmaNeural",    // Female, cheerful
+		"narrator":    "en-US-AriaNeural",  // Female, professional, news-style
+		"host":        "en-US-GuyNeural",   // Male, passionate
+		"expert":      "en-US-JennyNeural", // Female, friendly
+		"interviewer": "en-GB-RyanNeural",  // Male, British
+		"analyst":     "en-US-EmmaNeural",  // Female, cheerful
 	})
 	viper.SetDefault("models.image.model_id", "runwayml/stable-diffusion-v1-5")
 	viper.SetDefault("models.image.art_style", "cinematic, high quality, 4k, detailed")
@@ -75,7 +75,7 @@ func Load() (*Config, error) {
 	viper.SetDefault("output.directory", "./output")
 	viper.SetDefault("output.duration", 10) // 10 minutes default
 	viper.SetDefault("output.video.format", "mp4")
-	viper.SetDefault("output.video.background", "gradient")
+	viper.SetDefault("output.video.background", "ai-generated")
 	viper.SetDefault("output.video.waveform", true)
 
 	if err := viper.Unmarshal(&cfg); err != nil {

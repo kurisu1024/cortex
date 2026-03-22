@@ -3,9 +3,9 @@ package commands
 import (
 	"fmt"
 
+	"github.com/kutidu2048/cortex/internal/job"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/kutidu2048/cortex/internal/job"
 )
 
 var (
@@ -31,6 +31,14 @@ var generateCmd = &cobra.Command{
 			outputDir = viper.GetString("output.directory")
 			if outputDir == "" {
 				outputDir = "./output"
+			}
+		}
+
+		// Get background from flag or config
+		if !cmd.Flags().Changed("background") {
+			configBackground := viper.GetString("output.video.background")
+			if configBackground != "" {
+				background = configBackground
 			}
 		}
 
@@ -75,7 +83,7 @@ func init() {
 
 	generateCmd.Flags().StringVarP(&outputDir, "output", "o", "", "output directory for generated files")
 	generateCmd.Flags().StringVarP(&voiceName, "voice", "v", "", "TTS voice to use")
-	generateCmd.Flags().StringVarP(&background, "background", "b", "gradient", "video background style (gradient, solid, image)")
+	generateCmd.Flags().StringVarP(&background, "background", "b", "", "video background style (ai-generated, gradient, solid, image)")
 	generateCmd.Flags().BoolVarP(&highVoicesOnly, "high-voices-only", "H", false, "use only high-quality voices for generation")
 	generateCmd.Flags().IntVarP(&duration, "duration", "d", 0, "target video duration in minutes (default: 10, max: 60)")
 }

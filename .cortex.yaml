@@ -53,8 +53,8 @@ output:
 
   video:
     format: mp4
-    background: gradient  # Options: gradient, solid, image, ai-generated
-    waveform: true        # Show audio waveform visualization
+    background: ai-generated  # Options: gradient, solid, image, ai-generated
+    waveform: false        # Show audio waveform visualization
 
     # AI-generated background: Creates AI images from script content
     # Automatically generates prompts based on script segments

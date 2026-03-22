@@ -20,10 +20,10 @@ import (
 type Status string
 
 const (
-	StatusPending    Status = "pending"
-	StatusRunning    Status = "running"
-	StatusCompleted  Status = "completed"
-	StatusFailed     Status = "failed"
+	StatusPending   Status = "pending"
+	StatusRunning   Status = "running"
+	StatusCompleted Status = "completed"
+	StatusFailed    Status = "failed"
 )
 
 // Job represents a generation job
@@ -131,7 +131,7 @@ func (m *Manager) RunJob(jobID string) error {
 	// Stop animation
 	stopCortex <- true
 	time.Sleep(100 * time.Millisecond) // Give goroutine time to stop
-	fmt.Print("\033[4A\033[J")          // Move up 4 lines and clear to end
+	fmt.Print("\033[4A\033[J")         // Move up 4 lines and clear to end
 
 	if err != nil {
 		return m.failJob(job, fmt.Errorf("script generation failed: %w", err))
@@ -275,9 +275,9 @@ func (m *Manager) animateCortex(message string, stop chan bool) {
 		case <-stop:
 			return
 		case <-ticker.C:
-			// Clear previous robot (4 lines)
+			// Clear previous robot (4 lines) - always clear to maintain position
 			if frame > 0 {
-				fmt.Print("\033[4A") // Move up 4 lines
+				fmt.Print("\033[4A\033[J") // Move up 4 lines and clear to end
 			}
 			m.ui.ShowCortexWithMessage(message, frame)
 			frame++

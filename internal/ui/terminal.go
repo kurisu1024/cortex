@@ -53,10 +53,18 @@ func (t *Terminal) ShowHeader() {
 
 // ShowJobStart displays job initiation message
 func (t *Terminal) ShowJobStart(topic string) {
+	boxWidth := 62 // Total width between ║ characters
 	fmt.Printf("\n%s%s╔══════════════════════════════════════════════════════════════╗%s\n", Bold, Green, Reset)
 	fmt.Printf("%s%s║  INITIALIZING JOB                                             ║%s\n", Bold, Green, Reset)
 	fmt.Printf("%s%s╠══════════════════════════════════════════════════════════════╣%s\n", Bold, Green, Reset)
-	fmt.Printf("%s%s║  Topic: %-53s ║%s\n", Bold, Green, topic, Reset)
+
+	// Ensure topic fits within box with proper padding
+	topicLine := "Topic: " + topic
+	if len(topicLine) > boxWidth-4 {
+		topicLine = topicLine[:boxWidth-7] + "..."
+	}
+	padding := boxWidth - len(topicLine) - 4 // Subtract 4 for "║  " and " ║"
+	fmt.Printf("%s%s║  %s%s ║%s\n", Bold, Green, topicLine, strings.Repeat(" ", padding), Reset)
 	fmt.Printf("%s%s╚══════════════════════════════════════════════════════════════╝%s\n\n", Bold, Green, Reset)
 }
 
@@ -109,10 +117,21 @@ func (t *Terminal) createProgressBar(percentage, width int) string {
 
 // ShowSuccess displays success message
 func (t *Terminal) ShowSuccess(outputPath string) {
+	boxWidth := 62 // Total width between ║ characters
 	fmt.Printf("\n%s%s╔══════════════════════════════════════════════════════════════╗%s\n", Bold, Green, Reset)
 	fmt.Printf("%s%s║  ✓ JOB COMPLETED SUCCESSFULLY                                 ║%s\n", Bold, Green, Reset)
 	fmt.Printf("%s%s╠══════════════════════════════════════════════════════════════╣%s\n", Bold, Green, Reset)
-	fmt.Printf("%s%s║  Output: %-52s ║%s\n", Bold, Green, outputPath, Reset)
+
+	// Ensure output path fits within box with proper padding
+	outputLine := "Output: " + outputPath
+	if len(outputLine) > boxWidth-4 {
+		// Truncate from the middle to preserve filename
+		excessLen := len(outputLine) - (boxWidth - 7)
+		midPoint := len(outputLine) / 2
+		outputLine = outputLine[:midPoint-excessLen/2] + "..." + outputLine[midPoint+excessLen/2:]
+	}
+	padding := boxWidth - len(outputLine) - 4 // Subtract 4 for "║  " and " ║"
+	fmt.Printf("%s%s║  %s%s ║%s\n", Bold, Green, outputLine, strings.Repeat(" ", padding), Reset)
 	fmt.Printf("%s%s╚══════════════════════════════════════════════════════════════╝%s\n\n", Bold, Green, Reset)
 }
 
