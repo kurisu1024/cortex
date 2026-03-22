@@ -80,6 +80,8 @@ func (t *TTSClient) GenerateAudioWithVoice(text, outputPath, voicePath string) e
 		return t.generateWithPiperVoice(text, outputPath, voicePath)
 	case "say":
 		return t.generateWithSay(text, outputPath, voicePath)
+	case "edgetts":
+		return t.generateWithEdgeTTS(text, outputPath, voicePath)
 	default:
 		return fmt.Errorf("unsupported TTS engine: %s", t.engine)
 	}
@@ -184,6 +186,50 @@ func (t *TTSClient) generateWithSay(text, outputPath, voiceName string) error {
 
 	// Clean up temp AIFF file
 	os.Remove(tempAiff)
+
+	// Verify final WAV exists
+	if _, err := os.Stat(outputPath); os.IsNotExist(err) {
+		return fmt.Errorf("converted audio file was not created: %s", outputPath)
+	}
+
+	return nil
+}
+
+// generateWithEdgeTTS uses Microsoft Edge TTS to generate high-quality audio
+func (t *TTSClient) generateWithEdgeTTS(text, outputPath, voiceName string) error {
+	// Edge TTS uses voice names like "en-US-AriaNeural", "en-US-GuyNeural", etc.
+	// Default to AriaNeural if no voice specified
+	if voiceName == "" {
+		voiceName = "en-US-AriaNeural"
+	}
+
+	// Get path to Python wrapper script
+	scriptPath := filepath.Join("scripts", "edge_tts_wrapper.py")
+
+	// Edge TTS outputs MP3, we need WAV for consistency
+	tempMP3 := outputPath + ".mp3"
+
+	// Run the Python wrapper
+	cmd := exec.Command("python3", scriptPath, text, voiceName, tempMP3)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("edge-tts failed: %w\nOutput: %s", err, string(output))
+	}
+
+	// Verify temp MP3 was created
+	if _, err := os.Stat(tempMP3); os.IsNotExist(err) {
+		return fmt.Errorf("audio file was not created: %s", tempMP3)
+	}
+
+	// Convert MP3 to WAV using ffmpeg
+	convertCmd := exec.Command("ffmpeg", "-i", tempMP3, "-y", outputPath)
+	if err := convertCmd.Run(); err != nil {
+		os.Remove(tempMP3) // Clean up temp file
+		return fmt.Errorf("ffmpeg conversion failed: %w", err)
+	}
+
+	// Clean up temp MP3 file
+	os.Remove(tempMP3)
 
 	// Verify final WAV exists
 	if _, err := os.Stat(outputPath); os.IsNotExist(err) {

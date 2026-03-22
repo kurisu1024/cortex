@@ -9,6 +9,7 @@ import (
 
 	"github.com/kutidu2048/cortex/internal/audio"
 	"github.com/kutidu2048/cortex/internal/config"
+	"github.com/kutidu2048/cortex/internal/image"
 	"github.com/kutidu2048/cortex/internal/models"
 	"github.com/kutidu2048/cortex/internal/script"
 	"github.com/kutidu2048/cortex/internal/ui"
@@ -162,8 +163,42 @@ func (m *Manager) RunJob(jobID string) error {
 
 	videoGen := video.NewGenerator()
 	videoPath := filepath.Join(job.OutputDir, "output.mp4")
-	if err := videoGen.GenerateFromAudio(finalAudioPath, videoPath, job.Background, true); err != nil {
-		return m.failJob(job, fmt.Errorf("video generation failed: %w", err))
+
+	// Check if we need to generate AI images
+	if job.Background == "ai-generated" {
+		// Generate prompts from script segments
+		promptGen := image.NewPromptGenerator("cinematic, high quality, 4k, detailed")
+		prompts := promptGen.GeneratePrompts(scr.Segments)
+
+		if len(prompts) == 0 {
+			return m.failJob(job, fmt.Errorf("failed to generate image prompts from script"))
+		}
+
+		fmt.Printf("\n🎨 Generating %d AI images...\n", len(prompts))
+
+		// Generate images
+		imageGen := image.NewGenerator("runwayml/stable-diffusion-v1-5")
+		imagesDir := filepath.Join(job.OutputDir, "images")
+		if err := os.MkdirAll(imagesDir, 0755); err != nil {
+			return m.failJob(job, fmt.Errorf("failed to create images directory: %w", err))
+		}
+
+		imagePaths, err := imageGen.GenerateImagesForSegments(prompts, imagesDir)
+		if err != nil {
+			return m.failJob(job, fmt.Errorf("image generation failed: %w", err))
+		}
+
+		fmt.Printf("✅ Generated %d images\n", len(imagePaths))
+
+		// Generate video from images with Ken Burns effects
+		if err := videoGen.GenerateFromImages(imagePaths, finalAudioPath, videoPath); err != nil {
+			return m.failJob(job, fmt.Errorf("video generation failed: %w", err))
+		}
+	} else {
+		// Generate video with standard backgrounds
+		if err := videoGen.GenerateFromAudio(finalAudioPath, videoPath, job.Background, true); err != nil {
+			return m.failJob(job, fmt.Errorf("video generation failed: %w", err))
+		}
 	}
 
 	// Step 5: Complete

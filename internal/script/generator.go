@@ -9,10 +9,11 @@ import (
 
 // Segment represents a section of the script
 type Segment struct {
-	Index      int
-	Speaker    string
-	Text       string
-	VoicePath  string // Path to the voice model for this segment
+	Index         int
+	Speaker       string
+	Text          string    // The spoken dialogue (without speaker name)
+	SceneAction   string    // Visual description for video generation
+	VoicePath     string    // Path to the voice model for this segment
 }
 
 // Script represents a generated script with segments
@@ -61,23 +62,37 @@ func (g *Generator) Generate(topic string) (*Script, error) {
 	// Calculate approximate word count (150 words per minute of speech)
 	targetWords := g.duration * 150
 
-	prompt := fmt.Sprintf(`Create an engaging, informative script about: %s
+	prompt := fmt.Sprintf(`Create an engaging, animated video script about: %s
 
 The script should be:
-- Conversational and engaging
-- Well-structured with clear segments
+- Conversational with character dialogue
+- Well-structured with visual scene descriptions
 - Approximately %d minutes when spoken (around %d words total)
-- Educational but entertaining
-- Comprehensive and detailed to meet the target length
+- Educational but entertaining with personality
+- Include vivid scene descriptions for animation
 
-Format the script with clear segments like this:
-[SEGMENT 1]
-Text for first segment...
+Format EXACTLY like this example:
 
-[SEGMENT 2]
-Text for second segment...
+[SCENE 1: Wide shot of futuristic Mars colony with orange sky and domed habitats]
+NARRATOR: Welcome to the year 2045, where humanity has taken its greatest leap.
 
-Begin:`, topic, g.duration, targetWords)
+[SCENE 2: Inside high-tech research lab with holographic displays and scientists working]
+SCIENTIST: The data we're seeing is unprecedented. Life may exist beneath the Martian surface.
+NARRATOR: This discovery could change everything we know about the universe.
+
+[SCENE 3: Close-up of rover on Mars surface, red dust swirling around it]
+ENGINEER: The rover's sensors detected organic compounds in this crater.
+
+IMPORTANT RULES:
+- Start each scene with [SCENE N: visual description of what we see]
+- Use CHARACTER: before each line of dialogue
+- Make scenes visually descriptive and cinematic
+- Characters should have distinct personalities
+- Scene descriptions should guide animation/visuals
+
+Create approximately %d scenes for a %d minute video.
+
+Begin:`, topic, targetWords/50, targetWords, g.duration)
 
 	fmt.Println("🧠 Generating script with AI...")
 
@@ -90,6 +105,9 @@ Begin:`, topic, g.duration, targetWords)
 		Title:   topic,
 		RawText: rawScript,
 	}
+
+	// DEBUG: Print raw script to see what LLM generated
+	fmt.Printf("\n--- RAW SCRIPT ---\n%s\n--- END RAW SCRIPT ---\n\n", rawScript)
 
 	// Parse script into segments
 	segments := g.parseSegments(rawScript)
@@ -105,23 +123,37 @@ func (g *Generator) GenerateStream(topic string, callback func(string)) (*Script
 	// Calculate approximate word count (150 words per minute of speech)
 	targetWords := g.duration * 150
 
-	prompt := fmt.Sprintf(`Create an engaging, informative script about: %s
+	prompt := fmt.Sprintf(`Create an engaging, animated video script about: %s
 
 The script should be:
-- Conversational and engaging
-- Well-structured with clear segments
+- Conversational with character dialogue
+- Well-structured with visual scene descriptions
 - Approximately %d minutes when spoken (around %d words total)
-- Educational but entertaining
-- Comprehensive and detailed to meet the target length
+- Educational but entertaining with personality
+- Include vivid scene descriptions for animation
 
-Format the script with clear segments like this:
-[SEGMENT 1]
-Text for first segment...
+Format EXACTLY like this example:
 
-[SEGMENT 2]
-Text for second segment...
+[SCENE 1: Wide shot of futuristic Mars colony with orange sky and domed habitats]
+NARRATOR: Welcome to the year 2045, where humanity has taken its greatest leap.
 
-Begin:`, topic, g.duration, targetWords)
+[SCENE 2: Inside high-tech research lab with holographic displays and scientists working]
+SCIENTIST: The data we're seeing is unprecedented. Life may exist beneath the Martian surface.
+NARRATOR: This discovery could change everything we know about the universe.
+
+[SCENE 3: Close-up of rover on Mars surface, red dust swirling around it]
+ENGINEER: The rover's sensors detected organic compounds in this crater.
+
+IMPORTANT RULES:
+- Start each scene with [SCENE N: visual description of what we see]
+- Use CHARACTER: before each line of dialogue
+- Make scenes visually descriptive and cinematic
+- Characters should have distinct personalities
+- Scene descriptions should guide animation/visuals
+
+Create approximately %d scenes for a %d minute video.
+
+Begin:`, topic, targetWords/50, targetWords, g.duration)
 
 	fmt.Println("🧠 Generating script with AI...")
 
@@ -151,14 +183,14 @@ Begin:`, topic, g.duration, targetWords)
 	return script, nil
 }
 
-// parseSegments parses raw script text into segments
+// parseSegments parses raw script text into segments with scene actions and dialogue
 func (g *Generator) parseSegments(text string) []Segment {
 	var segments []Segment
 
-	// Try to parse [SEGMENT N] format by splitting on [SEGMENT markers
-	if strings.Contains(text, "[SEGMENT") {
-		// Split by [SEGMENT markers
-		parts := strings.Split(text, "[SEGMENT")
+	// Try to parse [SCENE N: description] format
+	if strings.Contains(text, "[SCENE") {
+		// Split by [SCENE markers
+		parts := strings.Split(text, "[SCENE")
 
 		for _, part := range parts {
 			part = strings.TrimSpace(part)
@@ -166,50 +198,97 @@ func (g *Generator) parseSegments(text string) []Segment {
 				continue
 			}
 
-			// Extract segment number and content
-			// Format: "1]\nContent here..."
+			// Extract scene description and dialogue
+			// Format: "1: Scene description]\nCHARACTER: dialogue\n..."
+			lines := strings.Split(part, "\n")
+			if len(lines) < 2 {
+				continue
+			}
+
+			// Parse scene header: "1: Scene description]"
+			sceneHeader := lines[0]
+			sceneAction := ""
+			if idx := strings.Index(sceneHeader, ":"); idx != -1 {
+				// Extract text between ":" and "]"
+				actionText := sceneHeader[idx+1:]
+				if endIdx := strings.Index(actionText, "]"); endIdx != -1 {
+					sceneAction = strings.TrimSpace(actionText[:endIdx])
+				}
+			}
+
+			// Parse dialogue lines
+			for _, line := range lines[1:] {
+				line = strings.TrimSpace(line)
+				if line == "" {
+					continue
+				}
+
+				// Parse "CHARACTER: dialogue" format
+				if idx := strings.Index(line, ":"); idx != -1 {
+					speaker := strings.TrimSpace(line[:idx])
+					dialogue := strings.TrimSpace(line[idx+1:])
+
+					if dialogue != "" {
+						// Clean up speaker name - remove parenthetical notes and extra info
+						// e.g. "NARRATOR (in an adventurous tone)" -> "narrator"
+						// e.g. "DR. PATEL, Lead Researcher" -> "dr. patel"
+						speaker = cleanSpeakerName(speaker)
+
+						segment := Segment{
+							Index:       len(segments),
+							Speaker:     speaker,
+							Text:        dialogue, // Just the dialogue, no speaker name
+							SceneAction: sceneAction,
+							VoicePath:   g.getVoicePathForSpeaker(speaker),
+						}
+						segments = append(segments, segment)
+					}
+				}
+			}
+		}
+	}
+
+	// Fallback: If no SCENE format found, try old SEGMENT format
+	if len(segments) == 0 && strings.Contains(text, "[SEGMENT") {
+		parts := strings.Split(text, "[SEGMENT")
+		for _, part := range parts {
+			part = strings.TrimSpace(part)
+			if part == "" {
+				continue
+			}
 			lines := strings.SplitN(part, "\n", 2)
 			if len(lines) >= 2 {
 				content := strings.TrimSpace(lines[1])
 				if content != "" {
 					segment := Segment{
-						Index:   len(segments),
-						Speaker: g.assignSpeaker(len(segments)),
-						Text:    content,
+						Index:       len(segments),
+						Speaker:     g.assignSpeaker(len(segments)),
+						Text:        content,
+						SceneAction: "",
+						VoicePath:   g.getVoicePathForSpeaker(g.assignSpeaker(len(segments))),
 					}
-					segment.VoicePath = g.getVoicePathForSpeaker(segment.Speaker)
 					segments = append(segments, segment)
 				}
 			}
 		}
 	}
 
-	// If no segments found, split by paragraphs
+	// Last fallback: split by paragraphs
 	if len(segments) == 0 {
 		paragraphs := strings.Split(text, "\n\n")
 		for _, para := range paragraphs {
 			para = strings.TrimSpace(para)
 			if para != "" && len(para) > 20 {
 				segment := Segment{
-					Index:   len(segments),
-					Speaker: g.assignSpeaker(len(segments)),
-					Text:    para,
+					Index:       len(segments),
+					Speaker:     g.assignSpeaker(len(segments)),
+					Text:        para,
+					SceneAction: "",
+					VoicePath:   g.getVoicePathForSpeaker(g.assignSpeaker(len(segments))),
 				}
-				segment.VoicePath = g.getVoicePathForSpeaker(segment.Speaker)
 				segments = append(segments, segment)
 			}
 		}
-	}
-
-	// If still no segments, create one big segment
-	if len(segments) == 0 {
-		segment := Segment{
-			Index:   0,
-			Speaker: g.assignSpeaker(0),
-			Text:    strings.TrimSpace(text),
-		}
-		segment.VoicePath = g.getVoicePathForSpeaker(segment.Speaker)
-		segments = append(segments, segment)
 	}
 
 	return segments
@@ -230,6 +309,22 @@ func (g *Generator) getVoicePathForSpeaker(speaker string) string {
 		return voicePath
 	}
 	return "" // Will use default voice
+}
+
+// cleanSpeakerName removes parenthetical notes and extra descriptions from speaker names
+func cleanSpeakerName(speaker string) string {
+	// Remove parenthetical notes: "NARRATOR (in an adventurous tone)" -> "NARRATOR"
+	if idx := strings.Index(speaker, "("); idx != -1 {
+		speaker = strings.TrimSpace(speaker[:idx])
+	}
+
+	// Remove comma and everything after: "DR. PATEL, Lead Researcher" -> "DR. PATEL"
+	if idx := strings.Index(speaker, ","); idx != -1 {
+		speaker = strings.TrimSpace(speaker[:idx])
+	}
+
+	// Convert to lowercase
+	return strings.ToLower(speaker)
 }
 
 // SaveToFile saves the script to a text file

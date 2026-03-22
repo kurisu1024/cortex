@@ -5,34 +5,43 @@ models:
   ollama:
     host: http://localhost:11434
     model: llama3.2
+
+  image:
+    # AI Image Generation (Stable Diffusion)
+    model_id: runwayml/stable-diffusion-v1-5
+    art_style: cinematic, high quality, 4k, detailed
+    steps: 30        # Inference steps (higher = better quality but slower)
+    guidance: 7.5    # How closely to follow prompt (1-20, typically 7-15)
+
   tts:
-    # TTS Engine: "say" (macOS native) or "piper" (requires installation)
-    engine: say
+    # TTS Engine: "edgetts" (Microsoft Edge, high quality), "say" (macOS), or "piper"
+    engine: edgetts
 
     # Default voice
-    voice: Samantha  # macOS voice name
+    voice: en-US-AriaNeural  # Edge TTS voice name
 
     # Multiple voices for different speakers
-    # macOS native voices (no installation required):
+    # Edge TTS neural voices (high quality, free, requires internet):
     voices:
-      narrator: Samantha    # Female, natural and clear
-      host: Alex            # Male, clear and friendly
-      expert: Victoria      # Female, professional
-      interviewer: Daniel   # Male, British accent
-      analyst: Karen        # Female, Australian accent
+      narrator: en-US-AriaNeural      # Female, professional, news-style
+      host: en-US-GuyNeural           # Male, passionate and energetic
+      expert: en-US-JennyNeural       # Female, friendly and considerate
+      interviewer: en-GB-RyanNeural   # Male, British accent
+      analyst: en-US-EmmaNeural       # Female, cheerful and clear
 
-    # To use Piper TTS instead, uncomment below and set engine to "piper":
-    # engine: piper
-    # voice: ~/.local/share/piper/voices/en_US-lessac-medium.onnx
-    # voices:
-    #   narrator: ~/.local/share/piper/voices/en_US-lessac-medium.onnx
-    #   host: ~/.local/share/piper/voices/en_US-ryan-high.onnx
-    #   expert: ~/.local/share/piper/voices/en_US-amy-medium.onnx
-    #   interviewer: ~/.local/share/piper/voices/en_US-joe-medium.onnx
-    #   analyst: ~/.local/share/piper/voices/en_US-ljspeech-high.onnx
+    # List all available Edge TTS voices: edge-tts --list-voices
+    # Popular voices:
+    #   en-US-AriaNeural (F), en-US-GuyNeural (M), en-US-JennyNeural (F)
+    #   en-GB-SoniaNeural (F), en-AU-NatashaNeural (F), en-CA-LiamNeural (M)
+
+    # Alternative engines:
+    # macOS say (offline, medium quality):
+    #   engine: say
+    #   voices: {narrator: Samantha, host: Alex, expert: Victoria}
     #
-    # Download Piper voices with: make download-voices
-    # More voices: say -v '?' | grep en_US
+    # Piper TTS (offline, requires setup):
+    #   engine: piper
+    #   voice: ~/.local/share/piper/voices/en_US-lessac-medium.onnx
 
 output:
   directory: ./output
@@ -44,5 +53,9 @@ output:
 
   video:
     format: mp4
-    background: gradient  # Options: gradient, solid, image
+    background: gradient  # Options: gradient, solid, image, ai-generated
     waveform: true        # Show audio waveform visualization
+
+    # AI-generated background: Creates AI images from script content
+    # Automatically generates prompts based on script segments
+    # Uses Stable Diffusion with Ken Burns effects (zoom/pan)
