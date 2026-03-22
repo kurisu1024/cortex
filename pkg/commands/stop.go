@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"github.com/topher/cortex/internal/models"
+	"github.com/kutidu2048/cortex/internal/models"
 )
 
 var stopCmd = &cobra.Command{

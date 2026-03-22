@@ -7,12 +7,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/topher/cortex/internal/audio"
-	"github.com/topher/cortex/internal/config"
-	"github.com/topher/cortex/internal/models"
-	"github.com/topher/cortex/internal/script"
-	"github.com/topher/cortex/internal/ui"
-	"github.com/topher/cortex/internal/video"
+	"github.com/kutidu2048/cortex/internal/audio"
+	"github.com/kutidu2048/cortex/internal/config"
+	"github.com/kutidu2048/cortex/internal/models"
+	"github.com/kutidu2048/cortex/internal/script"
+	"github.com/kutidu2048/cortex/internal/ui"
+	"github.com/kutidu2048/cortex/internal/video"
 )
 
 // Status represents job status
@@ -35,6 +35,7 @@ type Job struct {
 	Voice          string
 	Background     string
 	HighVoicesOnly bool
+	Duration       int // Target duration in minutes
 	CreatedAt      time.Time
 	StartedAt      *time.Time
 	CompletedAt    *time.Time
@@ -58,7 +59,7 @@ func NewManager() *Manager {
 }
 
 // CreateJob creates a new job
-func (m *Manager) CreateJob(topic, outputDir, voice, background string, highVoicesOnly bool) (string, error) {
+func (m *Manager) CreateJob(topic, outputDir, voice, background string, highVoicesOnly bool, duration int) (string, error) {
 	jobID := fmt.Sprintf("job_%d", time.Now().Unix())
 
 	job := &Job{
@@ -70,6 +71,7 @@ func (m *Manager) CreateJob(topic, outputDir, voice, background string, highVoic
 		Voice:          voice,
 		Background:     background,
 		HighVoicesOnly: highVoicesOnly,
+		Duration:       duration,
 		CreatedAt:      time.Now(),
 	}
 
@@ -102,6 +104,9 @@ func (m *Manager) RunJob(jobID string) error {
 	m.ui.ShowProgress(1, 5, "Generating script", "", job.Progress.StartTime)
 
 	scriptGen := script.NewGenerator(m.modelManager.GetLLM())
+
+	// Set target duration for the script
+	scriptGen.SetDuration(job.Duration)
 
 	// Load config to get multiple voices if available
 	cfg, err := config.Load()

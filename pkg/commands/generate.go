@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/topher/cortex/internal/job"
+	"github.com/kutidu2048/cortex/internal/job"
 )
 
 var (
@@ -13,6 +13,7 @@ var (
 	voiceName      string
 	background     string
 	highVoicesOnly bool
+	duration       int
 )
 
 var generateCmd = &cobra.Command{
@@ -33,8 +34,22 @@ var generateCmd = &cobra.Command{
 			}
 		}
 
+		// Get duration from flag or config
+		if duration == 0 {
+			duration = viper.GetInt("output.duration")
+			if duration == 0 {
+				duration = 10 // Fallback to 10 minutes
+			}
+		}
+
+		// Validate duration
+		if duration < 1 || duration > 60 {
+			fmt.Printf("❌ Invalid duration: %d minutes. Must be between 1 and 60.\n", duration)
+			return
+		}
+
 		manager := job.NewManager()
-		jobID, err := manager.CreateJob(topic, outputDir, voiceName, background, highVoicesOnly)
+		jobID, err := manager.CreateJob(topic, outputDir, voiceName, background, highVoicesOnly, duration)
 		if err != nil {
 			fmt.Printf("❌ Error creating job: %v\n", err)
 			return
@@ -43,6 +58,8 @@ var generateCmd = &cobra.Command{
 		if highVoicesOnly {
 			fmt.Println("🎯 Using high-quality voices only")
 		}
+
+		fmt.Printf("⏱️  Target duration: %d minutes (~%d words)\n", duration, duration*150)
 
 		if err := manager.RunJob(jobID); err != nil {
 			fmt.Printf("❌ Job failed: %v\n", err)
@@ -60,4 +77,5 @@ func init() {
 	generateCmd.Flags().StringVarP(&voiceName, "voice", "v", "", "TTS voice to use")
 	generateCmd.Flags().StringVarP(&background, "background", "b", "gradient", "video background style (gradient, solid, image)")
 	generateCmd.Flags().BoolVarP(&highVoicesOnly, "high-voices-only", "H", false, "use only high-quality voices for generation")
+	generateCmd.Flags().IntVarP(&duration, "duration", "d", 0, "target video duration in minutes (default: 10, max: 60)")
 }

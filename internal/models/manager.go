@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/topher/cortex/internal/config"
+	"github.com/kutidu2048/cortex/internal/config"
 )
 
 // Manager handles lifecycle of AI models

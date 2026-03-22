@@ -27,6 +27,12 @@ models:
 
 output:
   directory: ./output
+
+  # Target video duration in minutes (actual duration may vary slightly)
+  # Based on ~150 words per minute of speech
+  # Can be overridden with --duration flag
+  duration: 10  # Default: 10 minutes
+
   video:
     format: mp4
     background: gradient  # Options: gradient, solid, image

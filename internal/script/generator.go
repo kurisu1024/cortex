@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/topher/cortex/internal/models"
+	"github.com/kutidu2048/cortex/internal/models"
 )
 
 // Segment represents a section of the script
@@ -28,6 +28,7 @@ type Generator struct {
 	llm             *models.LLMClient
 	availableVoices map[string]string // speaker name -> voice path
 	speakers        []string          // list of speaker names for rotation
+	duration        int               // target duration in minutes (default: 10)
 }
 
 // NewGenerator creates a new script generator
@@ -36,6 +37,7 @@ func NewGenerator(llm *models.LLMClient) *Generator {
 		llm:             llm,
 		availableVoices: make(map[string]string),
 		speakers:        []string{},
+		duration:        10, // Default 10 minutes
 	}
 }
 
@@ -48,15 +50,26 @@ func (g *Generator) SetVoices(voices map[string]string) {
 	}
 }
 
+// SetDuration sets the target duration for the script
+func (g *Generator) SetDuration(minutes int) {
+	if minutes > 0 {
+		g.duration = minutes
+	}
+}
+
 // Generate creates a script for the given topic
 func (g *Generator) Generate(topic string) (*Script, error) {
+	// Calculate approximate word count (150 words per minute of speech)
+	targetWords := g.duration * 150
+
 	prompt := fmt.Sprintf(`Create an engaging, informative script about: %s
 
 The script should be:
 - Conversational and engaging
 - Well-structured with clear segments
-- About 2-3 minutes when spoken
+- Approximately %d minutes when spoken (around %d words total)
 - Educational but entertaining
+- Comprehensive and detailed to meet the target length
 
 Format the script with clear segments like this:
 [SEGMENT 1]
@@ -65,7 +78,7 @@ Text for first segment...
 [SEGMENT 2]
 Text for second segment...
 
-Begin:`, topic)
+Begin:`, topic, g.duration, targetWords)
 
 	fmt.Println("🧠 Generating script with AI...")
 
@@ -90,13 +103,17 @@ Begin:`, topic)
 
 // GenerateStream creates a script with streaming output
 func (g *Generator) GenerateStream(topic string, callback func(string)) (*Script, error) {
+	// Calculate approximate word count (150 words per minute of speech)
+	targetWords := g.duration * 150
+
 	prompt := fmt.Sprintf(`Create an engaging, informative script about: %s
 
 The script should be:
 - Conversational and engaging
 - Well-structured with clear segments
-- About 2-3 minutes when spoken
+- Approximately %d minutes when spoken (around %d words total)
 - Educational but entertaining
+- Comprehensive and detailed to meet the target length
 
 Format the script with clear segments like this:
 [SEGMENT 1]
@@ -105,7 +122,7 @@ Text for first segment...
 [SEGMENT 2]
 Text for second segment...
 
-Begin:`, topic)
+Begin:`, topic, g.duration, targetWords)
 
 	fmt.Println("🧠 Generating script with AI...")
 

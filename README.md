@@ -70,7 +70,7 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/topher/cortex.git
+git clone https://github.com/kutidu2048/cortex.git
 cd cortex
 
 # Check prerequisites
@@ -101,21 +101,30 @@ cortex status
 ### Generate a Video
 
 ```bash
-# Basic usage
+# Basic usage (10 minute video by default)
 cortex generate "The history of artificial intelligence"
+
+# Custom duration (5 minute video)
+cortex generate "Quick intro to Python" --duration 5
+cortex generate "Quick intro to Python" -d 5  # Short form
+
+# Longer video (20 minutes)
+cortex generate "Deep dive into machine learning" -d 20
 
 # With custom options
 cortex generate "Space exploration" \
   --output ./videos \
+  --duration 15 \
   --voice en_US-lessac-medium \
   --background gradient
 
 # Use only high-quality voices (better audio quality)
 cortex generate "Quantum computing explained" \
-  --high-voices-only
+  --high-voices-only \
+  --duration 8
 
-# Short form flag
-cortex generate "Climate change science" -H
+# Combine multiple flags
+cortex generate "AI Ethics" -H -d 12 -o ./videos
 ```
 
 ### Configuration
@@ -330,6 +339,7 @@ wget https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/ryan/high
 ### Generate Command
 
 - `-o, --output <dir>` - Output directory for generated files (default: `./output`)
+- `-d, --duration <minutes>` - Target video duration in minutes (default: `10`, max: `60`)
 - `-v, --voice <path>` - Specific TTS voice to use (overrides config)
 - `-b, --background <style>` - Video background style: `gradient`, `solid`, or `image` (default: `gradient`)
 - `-H, --high-voices-only` - Use only high-quality voices from configuration
@@ -342,11 +352,14 @@ wget https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/ryan/high
 # Use high-quality voices only
 cortex generate "AI Ethics" -H
 
+# Custom duration (15 minute video)
+cortex generate "Machine Learning" -d 15
+
 # Custom output directory
-cortex generate "Machine Learning" -o ~/videos
+cortex generate "Quantum Computing" -o ~/videos
 
 # Combine multiple flags
-cortex generate "Deep Learning" -H -o ./output -b solid
+cortex generate "Deep Learning" -H -d 20 -o ./output -b solid
 ```
 
 ## Troubleshooting

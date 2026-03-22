@@ -32,6 +32,7 @@ type TTSConfig struct {
 // OutputConfig holds output-related configuration
 type OutputConfig struct {
 	Directory string      `mapstructure:"directory"`
+	Duration  int         `mapstructure:"duration"` // Target video duration in minutes
 	Video     VideoConfig `mapstructure:"video"`
 }
 
@@ -53,6 +54,7 @@ func Load() (*Config, error) {
 	viper.SetDefault("models.tts.voice", "~/.local/share/piper/voices/en_US-lessac-medium.onnx")
 	viper.SetDefault("models.tts.voices", map[string]string{})
 	viper.SetDefault("output.directory", "./output")
+	viper.SetDefault("output.duration", 10) // 10 minutes default
 	viper.SetDefault("output.video.format", "mp4")
 	viper.SetDefault("output.video.background", "gradient")
 	viper.SetDefault("output.video.waveform", true)

@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/topher/cortex/internal/models"
-	"github.com/topher/cortex/internal/script"
+	"github.com/kutidu2048/cortex/internal/models"
+	"github.com/kutidu2048/cortex/internal/script"
 )
 
 // Generator handles audio generation from script segments
