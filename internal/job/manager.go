@@ -142,9 +142,17 @@ func (m *Manager) RunJob(jobID string) error {
 	m.ui.ShowProgress(2, 5, "Generating audio segments", "", job.Progress.StartTime)
 
 	audioGen := audio.NewGenerator(m.modelManager.GetTTS())
-	audioPaths, err := audioGen.GenerateFromScript(scr, job.OutputDir)
+	audioSegments, err := audioGen.GenerateFromScript(scr, job.OutputDir)
 	if err != nil {
 		return m.failJob(job, fmt.Errorf("audio generation failed: %w", err))
+	}
+
+	// Extract paths for combining
+	audioPaths := make([]string, len(audioSegments))
+	segmentDurations := make([]float64, len(audioSegments))
+	for i, seg := range audioSegments {
+		audioPaths[i] = seg.Path
+		segmentDurations[i] = seg.Duration
 	}
 
 	// Step 3: Combine audio
@@ -166,6 +174,21 @@ func (m *Manager) RunJob(jobID string) error {
 
 	// Check if we need to generate AI images
 	if job.Background == "ai-generated" {
+		// Load config for image/animation settings FIRST
+		cfg, err := config.Load()
+		if err != nil {
+			return m.failJob(job, fmt.Errorf("failed to load config: %w", err))
+		}
+
+		// Check if we should use animation
+		useAnimation := cfg.Output.Video.Animated
+		animationFrames := cfg.Output.Video.AnimationFrames
+		if animationFrames == 0 {
+			animationFrames = 16 // Default 16 frames = 2 seconds
+		}
+
+		fmt.Printf("\n[DEBUG] Config loaded: animated=%v, frames=%d\n", useAnimation, animationFrames)
+
 		// Generate prompts from script segments
 		promptGen := image.NewPromptGenerator("cinematic, high quality, 4k, detailed")
 		prompts := promptGen.GeneratePrompts(scr.Segments)
@@ -174,25 +197,52 @@ func (m *Manager) RunJob(jobID string) error {
 			return m.failJob(job, fmt.Errorf("failed to generate image prompts from script"))
 		}
 
-		fmt.Printf("\n🎨 Generating %d AI images...\n", len(prompts))
+		modelID := cfg.Models.Image.ModelID
+		if modelID == "" {
+			modelID = "stabilityai/sdxl-turbo"
+		}
+		imageGen := image.NewGenerator(modelID)
 
-		// Generate images
-		imageGen := image.NewGenerator("runwayml/stable-diffusion-v1-5")
-		imagesDir := filepath.Join(job.OutputDir, "images")
-		if err := os.MkdirAll(imagesDir, 0755); err != nil {
-			return m.failJob(job, fmt.Errorf("failed to create images directory: %w", err))
+		// Set animation mode BEFORE generating
+		imageGen.SetAnimationMode(useAnimation, animationFrames)
+
+		if useAnimation {
+			fmt.Printf("\n🎬 Generating %d animated video clips...\n", len(prompts))
+		} else {
+			fmt.Printf("\n🎨 Generating %d AI images...\n", len(prompts))
+		}
+		// Create directory for images or clips
+		mediaDir := filepath.Join(job.OutputDir, "images")
+		if useAnimation {
+			mediaDir = filepath.Join(job.OutputDir, "clips")
+		}
+		if err := os.MkdirAll(mediaDir, 0755); err != nil {
+			return m.failJob(job, fmt.Errorf("failed to create media directory: %w", err))
 		}
 
-		imagePaths, err := imageGen.GenerateImagesForSegments(prompts, imagesDir)
+		mediaPaths, err := imageGen.GenerateImagesForSegments(prompts, mediaDir)
 		if err != nil {
-			return m.failJob(job, fmt.Errorf("image generation failed: %w", err))
+			return m.failJob(job, fmt.Errorf("media generation failed: %w", err))
 		}
 
-		fmt.Printf("✅ Generated %d images\n", len(imagePaths))
-
-		// Generate video from images with Ken Burns effects
-		if err := videoGen.GenerateFromImages(imagePaths, finalAudioPath, videoPath); err != nil {
-			return m.failJob(job, fmt.Errorf("video generation failed: %w", err))
+		if useAnimation {
+			fmt.Printf("✅ Generated %d animated clips\n", len(mediaPaths))
+			for _, path := range mediaPaths {
+				fmt.Printf("Clip saved to: %s\n", path)
+			}
+			// Generate video by concatenating animated clips
+			if err := videoGen.GenerateFromAnimatedClips(mediaPaths, finalAudioPath, videoPath, segmentDurations); err != nil {
+				return m.failJob(job, fmt.Errorf("video generation failed: %w", err))
+			}
+		} else {
+			fmt.Printf("✅ Generated %d images\n", len(mediaPaths))
+			for _, path := range mediaPaths {
+				fmt.Printf("Images saved to: %s\n", path)
+			}
+			// Generate video from images with Ken Burns effects and segment timing
+			if err := videoGen.GenerateFromImages(mediaPaths, finalAudioPath, videoPath, segmentDurations); err != nil {
+				return m.failJob(job, fmt.Errorf("video generation failed: %w", err))
+			}
 		}
 	} else {
 		// Generate video with standard backgrounds

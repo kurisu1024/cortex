@@ -47,9 +47,11 @@ type OutputConfig struct {
 
 // VideoConfig holds video generation configuration
 type VideoConfig struct {
-	Format     string `mapstructure:"format"`
-	Background string `mapstructure:"background"`
-	Waveform   bool   `mapstructure:"waveform"`
+	Format          string `mapstructure:"format"`
+	Background      string `mapstructure:"background"`
+	Waveform        bool   `mapstructure:"waveform"`
+	Animated        bool   `mapstructure:"animated"`
+	AnimationFrames int    `mapstructure:"animation_frames"`
 }
 
 // Load loads the configuration from viper
@@ -68,7 +70,7 @@ func Load() (*Config, error) {
 		"interviewer": "en-GB-RyanNeural",  // Male, British
 		"analyst":     "en-US-EmmaNeural",  // Female, cheerful
 	})
-	viper.SetDefault("models.image.model_id", "runwayml/stable-diffusion-v1-5")
+	viper.SetDefault("models.image.model_id", "stabilityai/sdxl-turbo")
 	viper.SetDefault("models.image.art_style", "cinematic, high quality, 4k, detailed")
 	viper.SetDefault("models.image.steps", 30)
 	viper.SetDefault("models.image.guidance", 7.5)
@@ -77,6 +79,8 @@ func Load() (*Config, error) {
 	viper.SetDefault("output.video.format", "mp4")
 	viper.SetDefault("output.video.background", "ai-generated")
 	viper.SetDefault("output.video.waveform", true)
+	viper.SetDefault("output.video.animated", false)
+	viper.SetDefault("output.video.animation_frames", 16)
 
 	if err := viper.Unmarshal(&cfg); err != nil {
 		return nil, err

@@ -23,10 +23,9 @@ func NewPromptGenerator(style string) *PromptGenerator {
 	}
 }
 
-// GeneratePrompts creates image prompts from script segments
+// GeneratePrompts creates image prompts from script segments (one per segment)
 func (p *PromptGenerator) GeneratePrompts(segments []script.Segment) []string {
-	prompts := make([]string, 0)
-	seenScenes := make(map[string]bool)
+	prompts := make([]string, 0, len(segments))
 
 	for _, segment := range segments {
 		// Use scene action if available, otherwise generate from text
@@ -34,17 +33,11 @@ func (p *PromptGenerator) GeneratePrompts(segments []script.Segment) []string {
 		if segment.SceneAction != "" {
 			// Use the scene description directly - it's already a visual description
 			prompt = fmt.Sprintf("%s, %s", segment.SceneAction, p.style)
-
-			// Only add each unique scene once (avoid duplicates from multiple dialogue lines in same scene)
-			if !seenScenes[segment.SceneAction] {
-				prompts = append(prompts, prompt)
-				seenScenes[segment.SceneAction] = true
-			}
 		} else {
 			// Fallback to keyword-based generation for old format
 			prompt = p.generatePromptFromText(segment.Text)
-			prompts = append(prompts, prompt)
 		}
+		prompts = append(prompts, prompt)
 	}
 
 	return prompts

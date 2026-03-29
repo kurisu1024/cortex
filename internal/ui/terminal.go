@@ -151,6 +151,9 @@ func (t *Terminal) ShowError(message string) {
 		if len(line)+len(word)+1 > maxLineLen {
 			// Print current line with proper padding
 			padding := maxLineLen - len(line)
+			if padding < 0 {
+				padding = 0 // Prevent negative padding
+			}
 			fmt.Printf("%s%s║  %s%s ║%s\n", Bold, Red, line, strings.Repeat(" ", padding), Reset)
 			line = word
 		} else {
@@ -164,6 +167,9 @@ func (t *Terminal) ShowError(message string) {
 	// Print last line
 	if line != "" {
 		padding := maxLineLen - len(line)
+		if padding < 0 {
+			padding = 0 // Prevent negative padding
+		}
 		fmt.Printf("%s%s║  %s%s ║%s\n", Bold, Red, line, strings.Repeat(" ", padding), Reset)
 	}
 

@@ -19,15 +19,22 @@ func NewGenerator(tts *models.TTSClient) *Generator {
 	return &Generator{tts: tts}
 }
 
-// GenerateFromScript generates audio files for each script segment
-func (g *Generator) GenerateFromScript(scr *script.Script, outputDir string) ([]string, error) {
+// SegmentInfo holds audio path and duration for a segment
+type SegmentInfo struct {
+	Path     string
+	Duration float64
+}
+
+// GenerateFromScript generates audio files for each script segment and returns paths with durations
+func (g *Generator) GenerateFromScript(scr *script.Script, outputDir string) ([]SegmentInfo, error) {
 	// Create output directory if it doesn't exist
 	audioDir := filepath.Join(outputDir, "audio_segments")
 	if err := os.MkdirAll(audioDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create audio directory: %w", err)
 	}
 
-	var audioPaths []string
+	segments := make([]SegmentInfo, 0, len(scr.Segments))
+	combiner := NewCombiner()
 
 	fmt.Printf("\n🎙️  Generating audio for %d segments...\n", len(scr.Segments))
 
@@ -53,12 +60,21 @@ func (g *Generator) GenerateFromScript(scr *script.Script, outputDir string) ([]
 			}
 		}
 
-		audioPaths = append(audioPaths, outputPath)
+		// Get duration of the generated audio
+		duration, err := combiner.GetDuration(outputPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get duration for segment %d: %w", i, err)
+		}
+
+		segments = append(segments, SegmentInfo{
+			Path:     outputPath,
+			Duration: duration,
+		})
 	}
 
-	fmt.Printf("✅ Generated %d audio segments\n", len(audioPaths))
+	fmt.Printf("✅ Generated %d audio segments\n", len(segments))
 
-	return audioPaths, nil
+	return segments, nil
 }
 
 // GenerateSegment generates audio for a single segment

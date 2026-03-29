@@ -190,77 +190,205 @@ func (g *Generator) AddSubtitles(videoPath, subtitlesPath, outputPath string) er
 }
 
 // GenerateFromImages creates a video from AI-generated images with Ken Burns effects
-func (g *Generator) GenerateFromImages(imagePaths []string, audioPath, outputPath string) error {
+func (g *Generator) GenerateFromImages(imagePaths []string, audioPath, outputPath string, segmentDurations []float64) error {
 	if len(imagePaths) == 0 {
 		return fmt.Errorf("no images provided")
 	}
 
-	fmt.Println("\n🎬 Generating video from AI images...")
-
-	// Get audio duration to calculate timing
-	audioDuration, err := g.getAudioDuration(audioPath)
-	if err != nil {
-		return fmt.Errorf("failed to get audio duration: %w", err)
+	if len(imagePaths) != len(segmentDurations) {
+		return fmt.Errorf("mismatch: %d images but %d segment durations", len(imagePaths), len(segmentDurations))
 	}
 
-	// Calculate duration per image (in seconds)
-	durationPerImage := audioDuration / float64(len(imagePaths))
-
-	// Build ffmpeg command with inputs
-	var args []string
-
-	// Add all image inputs
-	for _, imgPath := range imagePaths {
-		args = append(args, "-loop", "1", "-t", fmt.Sprintf("%.2f", durationPerImage), "-i", imgPath)
+	fmt.Printf("\n🎬 Generating video from %d AI images with Ken Burns effects...\n", len(imagePaths))
+	for i, imgPath := range imagePaths {
+		fmt.Printf("  Image %d: %s (%.2fs)\n", i+1, filepath.Base(imgPath), segmentDurations[i])
 	}
 
-	// Add audio input
-	args = append(args, "-i", audioPath)
+	// Create temp directory for individual video clips
+	tempClipsDir := filepath.Join(filepath.Dir(outputPath), "temp_image_clips")
+	if err := os.MkdirAll(tempClipsDir, 0755); err != nil {
+		return fmt.Errorf("failed to create temp clips directory: %w", err)
+	}
+	defer os.RemoveAll(tempClipsDir)
 
-	// Build filter complex for Ken Burns effects
-	var filterParts []string
-	for i := range imagePaths {
+	// Step 1: Create individual video clips from each image with Ken Burns effect
+	var clipPaths []string
+	for i, imagePath := range imagePaths {
+		clipPath := filepath.Join(tempClipsDir, fmt.Sprintf("clip_%03d.mp4", i))
+		duration := segmentDurations[i]
+		durationFrames := int(duration * 25) // Convert to frames at 25fps
+
+		fmt.Printf("  [%d/%d] Creating clip from %s...\n", i+1, len(imagePaths), filepath.Base(imagePath))
+
 		var zoomFilter string
 		if i%2 == 0 {
 			// Zoom in effect
-			zoomFilter = fmt.Sprintf("[%d:v]scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,"+
-				"zoompan=z='min(zoom+0.0015,1.5)':d=%d:s=1920x1080:fps=25[v%d]",
-				i, int(durationPerImage*25), i)
+			zoomFilter = fmt.Sprintf("scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,"+
+				"zoompan=z='min(zoom+0.0015,1.5)':d=%d:s=1920x1080:fps=25", durationFrames)
 		} else {
 			// Zoom out effect
-			zoomFilter = fmt.Sprintf("[%d:v]scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,"+
-				"zoompan=z='if(lte(zoom,1.0),1.5,max(1.0,zoom-0.0015))':d=%d:s=1920x1080:fps=25[v%d]",
-				i, int(durationPerImage*25), i)
+			zoomFilter = fmt.Sprintf("scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,"+
+				"zoompan=z='if(lte(zoom,1.0),1.5,max(1.0,zoom-0.0015))':d=%d:s=1920x1080:fps=25", durationFrames)
 		}
-		filterParts = append(filterParts, zoomFilter)
+
+		args := []string{
+			"-loop", "1",
+			"-i", imagePath,
+			"-vf", zoomFilter,
+			"-t", fmt.Sprintf("%.2f", duration),
+			"-c:v", "libx264",
+			"-pix_fmt", "yuv420p",
+			"-y",
+			clipPath,
+		}
+
+		cmd := exec.Command("ffmpeg", args...)
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("failed to create clip %d: %w\nOutput: %s", i, err, string(output))
+		}
+
+		clipPaths = append(clipPaths, clipPath)
 	}
 
-	// Concatenate all video segments
-	var concatInputs string
-	for i := range imagePaths {
-		concatInputs += fmt.Sprintf("[v%d]", i)
+	fmt.Printf("\n✅ Created %d video clips\n", len(clipPaths))
+
+	// Step 2: Create concat file
+	concatFile := filepath.Join(tempClipsDir, "concat_list.txt")
+	var concatContent strings.Builder
+	for _, clipPath := range clipPaths {
+		absPath, _ := filepath.Abs(clipPath)
+		concatContent.WriteString(fmt.Sprintf("file '%s'\n", absPath))
 	}
-	concatFilter := fmt.Sprintf("%sconcat=n=%d:v=1:a=0[outv]", concatInputs, len(imagePaths))
-	filterParts = append(filterParts, concatFilter)
 
-	filterComplex := strings.Join(filterParts, ";")
+	if err := os.WriteFile(concatFile, []byte(concatContent.String()), 0644); err != nil {
+		return fmt.Errorf("failed to write concat file: %w", err)
+	}
 
-	args = append(args,
-		"-filter_complex", filterComplex,
-		"-map", "[outv]",
-		"-map", fmt.Sprintf("%d:a", len(imagePaths)), // Audio is the last input
+	// Step 3: Concatenate all clips and add audio
+	fmt.Printf("\n🎬 Concatenating %d clips and adding audio...\n", len(clipPaths))
+
+	args := []string{
+		"-f", "concat",
+		"-safe", "0",
+		"-i", concatFile,
+		"-i", audioPath,
+		"-c:v", "copy", // Copy video since clips are already encoded
+		"-c:a", "aac",
+		"-b:a", "192k",
+		"-shortest",
+		"-y",
+		outputPath,
+	}
+
+	cmd := exec.Command("ffmpeg", args...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("ffmpeg concat failed: %w\nOutput: %s", err, string(output))
+	}
+
+	fmt.Printf("✅ Video saved to: %s\n", outputPath)
+	return nil
+}
+
+// GenerateFromAnimatedClips creates a final video by concatenating animated video clips
+func (g *Generator) GenerateFromAnimatedClips(clipPaths []string, audioPath, outputPath string, segmentDurations []float64) error {
+	if len(clipPaths) == 0 {
+		return fmt.Errorf("no clips provided")
+	}
+
+	if len(clipPaths) != len(segmentDurations) {
+		return fmt.Errorf("mismatch: %d clips but %d segment durations", len(clipPaths), len(segmentDurations))
+	}
+
+	fmt.Printf("\n🎬 Generating final video from %d animated clips...\n", len(clipPaths))
+	for i, clipPath := range clipPaths {
+		fmt.Printf("  Clip %d: %s (%.2fs)\n", i, filepath.Base(clipPath), segmentDurations[i])
+	}
+
+	// Create a concat file for ffmpeg
+	concatFile := filepath.Join(filepath.Dir(outputPath), "concat_clips.txt")
+	var concatContent strings.Builder
+
+	// For each clip, we need to potentially loop or trim to match audio duration
+	// AnimateDiff clips are typically 2 seconds (16 frames @ 8fps)
+	tempClipsDir := filepath.Join(filepath.Dir(outputPath), "temp_clips")
+	if err := os.MkdirAll(tempClipsDir, 0755); err != nil {
+		return fmt.Errorf("failed to create temp clips directory: %w", err)
+	}
+	defer os.RemoveAll(tempClipsDir)
+
+	for i, clipPath := range clipPaths {
+		// Get the clip duration
+		clipDuration, err := g.getAudioDuration(clipPath)
+		if err != nil {
+			// If can't get duration, assume 2 seconds (typical AnimateDiff output)
+			clipDuration = 2.0
+		}
+
+		targetDuration := segmentDurations[i]
+		processedClip := filepath.Join(tempClipsDir, fmt.Sprintf("processed_%03d.mp4", i))
+
+		// If clip is shorter than target, loop it; if longer, trim it
+		var args []string
+		if targetDuration > clipDuration {
+			// Loop the clip
+			loops := int(targetDuration/clipDuration) + 1
+			args = []string{
+				"-stream_loop", fmt.Sprintf("%d", loops),
+				"-i", clipPath,
+				"-t", fmt.Sprintf("%.2f", targetDuration),
+				"-c", "copy",
+				"-y",
+				processedClip,
+			}
+		} else {
+			// Trim the clip
+			args = []string{
+				"-i", clipPath,
+				"-t", fmt.Sprintf("%.2f", targetDuration),
+				"-c", "copy",
+				"-y",
+				processedClip,
+			}
+		}
+
+		cmd := exec.Command("ffmpeg", args...)
+		if output, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("failed to process clip %d: %w\nOutput: %s", i, err, string(output))
+		}
+
+		// Add to concat list
+		absPath, _ := filepath.Abs(processedClip)
+		concatContent.WriteString(fmt.Sprintf("file '%s'\n", absPath))
+	}
+
+	// Write concat file
+	if err := os.WriteFile(concatFile, []byte(concatContent.String()), 0644); err != nil {
+		return fmt.Errorf("failed to write concat file: %w", err)
+	}
+	defer os.Remove(concatFile)
+
+	// Concatenate all clips and add audio
+	args := []string{
+		"-f", "concat",
+		"-safe", "0",
+		"-i", concatFile,
+		"-i", audioPath,
 		"-c:v", "libx264",
 		"-c:a", "aac",
 		"-b:a", "192k",
 		"-shortest",
 		"-y",
 		outputPath,
-	)
+	}
+
+	fmt.Printf("\nFFmpeg concat command: ffmpeg %s\n\n", strings.Join(args, " "))
 
 	cmd := exec.Command("ffmpeg", args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("ffmpeg failed: %w\nOutput: %s", err, string(output))
+		return fmt.Errorf("ffmpeg concat failed: %w\nOutput: %s", err, string(output))
 	}
 
 	fmt.Printf("✅ Video saved to: %s\n", outputPath)
