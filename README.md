@@ -16,9 +16,11 @@
 ## Features
 
 - 🧠 **Local LLM Integration** - Uses Ollama for script generation (no API keys needed)
-- 🎙️ **Local TTS** - Piper TTS for high-quality speech synthesis
-- 🎬 **Video Generation** - Automatic video creation with audio waveform visualizations
-- 🎨 **Customizable Backgrounds** - Gradient, solid color, or image backgrounds
+- 🎙️ **High-Quality TTS** - Edge TTS with neural voices (default) or offline Piper TTS
+- 🎨 **AI Image Generation** - SDXL-Turbo for fast, high-quality visuals (GPU-accelerated on Apple Silicon)
+- 🎬 **Animated Videos** - AnimateDiff for fully animated cartoon characters and scenes
+- 🖼️ **Flexible Backgrounds** - Gradient, solid color, custom images, or AI-generated scenes
+- ⚡ **Optimized Performance** - fp16 precision, CPU offloading, memory-efficient generation
 - 📊 **Progress Tracking** - Real-time progress with hacker-style terminal UI
 - ⚙️ **Configurable** - Viper + Cobra for flexible configuration and CLI
 
@@ -32,29 +34,22 @@
    curl -fsSL https://ollama.com/install.sh | sh
 
    # Pull a model
-   ollama pull llama3
+   ollama pull llama3.2
 
    # Start Ollama
    ollama serve
    ```
 
-2. **Piper TTS** - For text-to-speech
+2. **Python 3.9+** - For AI image/animation generation
    ```bash
-   # Download Piper binary from GitHub releases
-   # https://github.com/rhasspy/piper/releases
+   # Check Python version
+   python3 --version
 
-   # macOS example:
-   mkdir -p ~/.local/bin
-   curl -L https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_macos_x64.tar.gz -o piper.tar.gz
-   tar -xzf piper.tar.gz
-   cp piper/piper ~/.local/bin/
-   export PATH="$HOME/.local/bin:$PATH"
-
-   # Download a voice model
-   mkdir -p ~/.local/share/piper/voices
-   cd ~/.local/share/piper/voices
-   wget https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx
-   wget https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx.json
+   # Install required packages
+   pip3 install torch torchvision torchaudio
+   pip3 install diffusers transformers accelerate
+   pip3 install opencv-python
+   pip3 install edge-tts  # For text-to-speech
    ```
 
 3. **FFmpeg** - For audio/video processing
@@ -64,6 +59,22 @@
 
    # Linux
    sudo apt-get install ffmpeg
+   ```
+
+4. **Piper TTS** (Optional) - For offline text-to-speech
+   ```bash
+   # Only needed if you want offline TTS instead of Edge TTS
+   # Download Piper binary from https://github.com/rhasspy/piper/releases
+
+   # macOS example:
+   mkdir -p ~/.local/bin
+   curl -L https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_macos_x64.tar.gz -o piper.tar.gz
+   tar -xzf piper.tar.gz
+   cp piper/piper ~/.local/bin/
+   export PATH="$HOME/.local/bin:$PATH"
+
+   # Download voice models
+   make download-voices
    ```
 
 ### Installation
@@ -95,15 +106,14 @@ The `make install` command will:
 After installation, download the required AI models:
 
 ```bash
-# Download Piper TTS voices (required for text-to-speech)
-make download-voices
-
 # Download Ollama LLM model (required for script generation)
-make download-model
+ollama pull llama3.2
 
 # Start Ollama service
 ollama serve
 ```
+
+**Note:** Edge TTS works out of the box (requires internet). AI image models are downloaded automatically on first use.
 
 ## Usage
 
@@ -130,16 +140,17 @@ cortex generate "Deep dive into machine learning" -d 20
 cortex generate "Space exploration" \
   --output ./videos \
   --duration 15 \
-  --voice en_US-lessac-medium \
-  --background gradient
+  --background ai-generated
 
-# Use only high-quality voices (better audio quality)
-cortex generate "Quantum computing explained" \
-  --high-voices-only \
-  --duration 8
+# AI-generated animated backgrounds
+cortex generate "History of Animation" \
+  --background ai-generated \
+  --duration 10
 
-# Combine multiple flags
-cortex generate "AI Ethics" -H -d 12 -o ./videos
+# Static background with gradient
+cortex generate "Quick tutorial" \
+  --background gradient \
+  -d 5
 ```
 
 ### Configuration
@@ -150,24 +161,43 @@ Create a `.cortex.yaml` file in your home directory or project directory:
 models:
   ollama:
     host: http://localhost:11434
-    model: llama3
-  tts:
-    engine: piper
-    # Default voice
-    voice: ~/.local/share/piper/voices/en_US-lessac-medium.onnx
+    model: llama3.2
 
-    # Multiple voices (optional) - rotates through voices for different segments
+  image:
+    # AI Image/Animation Generation
+    model_id: stabilityai/sdxl-turbo  # Fast, high-quality image generation
+    art_style: cinematic, high quality, 4k, detailed
+
+  tts:
+    # TTS Engine: "edgetts" (default, requires internet) or "piper" (offline)
+    engine: edgetts
+
+    # Default voice
+    voice: en-US-AriaNeural
+
+    # Multiple voices for dynamic narration
     voices:
-      narrator: ~/.local/share/piper/voices/en_US-lessac-medium.onnx
-      host: ~/.local/share/piper/voices/en_US-ryan-high.onnx
-      expert: ~/.local/share/piper/voices/en_US-amy-medium.onnx
+      narrator: en-US-AriaNeural      # Female, professional
+      host: en-US-GuyNeural           # Male, energetic
+      expert: en-US-JennyNeural       # Female, friendly
+      interviewer: en-GB-RyanNeural   # Male, British
+
+    # Alternative: Piper TTS (offline, requires setup)
+    # engine: piper
+    # voice: ~/.local/share/piper/voices/en_US-lessac-medium.onnx
 
 output:
   directory: ./output
+  duration: 10  # Default video duration in minutes
+
   video:
     format: mp4
-    background: gradient  # Options: gradient, solid, image
-    waveform: true
+    background: ai-generated  # Options: gradient, solid, image, ai-generated
+    waveform: false
+
+    # AI Animation Settings
+    animated: true           # Use AnimateDiff for animated scenes
+    animation_frames: 10     # Frames per clip (8=1s, 10=1.25s, 12=1.5s, 16=2s)
 ```
 
 ### Commands
@@ -194,10 +224,13 @@ cortex --help        # Show all commands
 
 Cortex follows a multi-step pipeline:
 
-1. **Script Generation** - Uses Ollama LLM to create an engaging script
-2. **Text-to-Speech** - Converts script segments to audio using Piper
+1. **Script Generation** - Uses Ollama LLM to create an engaging script with scenes
+2. **Text-to-Speech** - Converts script segments to audio using Edge TTS or Piper
 3. **Audio Combination** - Merges audio segments with transitions
-4. **Video Creation** - Combines audio with visualizations into MP4
+4. **Image/Animation Generation** - Creates AI visuals for each scene:
+   - **Static mode**: SDXL-Turbo images with Ken Burns zoom effects (~5-10s per image)
+   - **Animated mode**: AnimateDiff cartoon clips with character motion (~10-15s per clip)
+5. **Video Creation** - Combines images/animations with audio into final MP4
 
 ## Project Structure
 
@@ -265,19 +298,45 @@ export CORTEX_OUTPUT_DIRECTORY=./my-videos
 
 ### Background Styles
 
-- **gradient** - Smooth color gradients (default)
+Cortex supports multiple background modes:
+
+- **ai-generated** (default) - AI-generated scenes with two modes:
+  - **Static** (`animated: false`): SDXL-Turbo images with Ken Burns zoom/pan effects
+    - Fast generation: ~5-10 seconds per image on M4 GPU
+    - Low memory usage: ~1-2GB
+  - **Animated** (`animated: true`): AnimateDiff cartoon clips with character motion
+    - Optimized generation: ~10-15 seconds per clip on M4 GPU
+    - Memory efficient: ~2-3GB peak with fp16 + CPU offloading
+    - Configure frames: 8 (1s), 10 (1.25s), 12 (1.5s), or 16 (2s)
+
+- **gradient** - Smooth color gradients (simple, no AI required)
 - **solid** - Solid dark background
 - **image** - Use a custom background image
 
-### Waveform Visualization
+### AI Animation Configuration
 
-Enable/disable audio waveform overlay in config:
+Configure animation in `.cortex.yaml`:
 
 ```yaml
 output:
   video:
-    waveform: true  # or false
+    background: ai-generated
+    animated: true           # false for static images, true for animated clips
+    animation_frames: 10     # Recommended: 10 frames (1.25s clips)
+    waveform: false         # Optional audio waveform overlay
 ```
+
+**Performance Guide (Apple Silicon M4):**
+- 8 frames (1.0s): ~8-10 seconds per clip, ~1.5GB memory
+- 10 frames (1.25s): ~10-12 seconds per clip, ~2GB memory ⭐ **Recommended**
+- 12 frames (1.5s): ~12-14 seconds per clip, ~2.5GB memory
+- 16 frames (2.0s): ~15-18 seconds per clip, ~3GB memory
+
+**Optimizations Applied:**
+- fp16 precision for 50% memory reduction
+- CPU offloading to prevent OOM errors
+- Reduced inference steps (15) for 2-3x speed boost
+- Memory cleanup between clips
 
 ## Multiple Voice Support
 
@@ -356,25 +415,31 @@ wget https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/ryan/high
 - `-o, --output <dir>` - Output directory for generated files (default: `./output`)
 - `-d, --duration <minutes>` - Target video duration in minutes (default: `10`, max: `60`)
 - `-v, --voice <path>` - Specific TTS voice to use (overrides config)
-- `-b, --background <style>` - Video background style: `gradient`, `solid`, or `image` (default: `gradient`)
-- `-H, --high-voices-only` - Use only high-quality voices from configuration
+- `-b, --background <style>` - Video background style: `gradient`, `solid`, `image`, or `ai-generated` (default: `ai-generated`)
+- `-H, --high-voices-only` - Use only high-quality voices from configuration (for Piper TTS)
 - `--config <file>` - Custom config file path
 - `--verbose` - Enable verbose output
 
 ### Examples
 
 ```bash
-# Use high-quality voices only
-cortex generate "AI Ethics" -H
+# AI-generated animated video (default)
+cortex generate "AI Ethics"
+
+# AI-generated static images (faster)
+# Set animated: false in .cortex.yaml
 
 # Custom duration (15 minute video)
 cortex generate "Machine Learning" -d 15
+
+# Simple gradient background (no AI generation)
+cortex generate "Quick Tutorial" -b gradient -d 5
 
 # Custom output directory
 cortex generate "Quantum Computing" -o ~/videos
 
 # Combine multiple flags
-cortex generate "Deep Learning" -H -d 20 -o ./output -b solid
+cortex generate "Deep Learning" -d 20 -o ./output -b ai-generated
 ```
 
 ## Troubleshooting
@@ -384,25 +449,69 @@ cortex generate "Deep Learning" -H -d 20 -o ./output -b solid
 ollama serve
 ```
 
-**Piper not found:**
-- Ensure Piper is in your PATH
-- Install from: https://github.com/rhasspy/piper
+**Python/PyTorch issues:**
+```bash
+# Check Python version (need 3.9+)
+python3 --version
+
+# Reinstall PyTorch with MPS support (Apple Silicon)
+pip3 install --upgrade torch torchvision torchaudio
+
+# Install missing packages
+pip3 install diffusers transformers accelerate opencv-python edge-tts
+```
+
+**GPU/MPS errors:**
+```bash
+# "Invalid buffer size" or "Out of memory" errors:
+# 1. Reduce animation_frames in .cortex.yaml (try 8 instead of 10-16)
+# 2. Close other GPU-intensive applications
+# 3. Set animated: false for static images (uses less memory)
+
+# Black images or MPS errors:
+# System will automatically fall back to CPU if MPS fails
+```
+
+**Edge TTS connection errors:**
+```bash
+# Requires internet connection
+# Alternative: Use offline Piper TTS
+# Set engine: piper in .cortex.yaml and install voices
+```
 
 **FFmpeg errors:**
-- Install/update FFmpeg: `brew install ffmpeg`
+```bash
+# Install/update FFmpeg
+brew install ffmpeg  # macOS
+sudo apt-get install ffmpeg  # Linux
+```
 
-**No high-quality voices available:**
-- Download high-quality voices: `make download-voice-high`
-- Or download all voices: `make download-voices`
+**Slow generation:**
+```bash
+# For faster AI generation:
+# 1. Reduce animation_frames to 8 (1 second clips)
+# 2. Use animated: false for static images (~5-10s vs 10-15s)
+# 3. Ensure you're using GPU (check for MPS messages in output)
+```
+
+**Piper TTS issues (if using offline TTS):**
+```bash
+# Ensure Piper is in your PATH
+# Install from: https://github.com/rhasspy/piper
+# Download voices: make download-voices
+```
 
 ## Roadmap
 
+- [x] AI-generated images and animations
+- [x] Multiple voice support with different speakers
+- [x] GPU acceleration for Apple Silicon
 - [ ] Web UI for monitoring jobs (React dashboard)
-- [ ] Multiple voice support with different speakers
 - [ ] Custom video templates and transitions
 - [ ] Subtitle generation from script
 - [ ] Export to multiple formats
 - [ ] Batch processing
+- [ ] Alternative animation models (AnimateDiff v2, v3)
 
 ## License
 
@@ -414,4 +523,4 @@ Contributions welcome! Please open an issue or PR.
 
 ---
 
-**Built with** [Cobra](https://github.com/spf13/cobra) • [Viper](https://github.com/spf13/viper) • [Ollama](https://ollama.com) • [Piper TTS](https://github.com/rhasspy/piper) • [FFmpeg](https://ffmpeg.org)
+**Built with** [Cobra](https://github.com/spf13/cobra) • [Viper](https://github.com/spf13/viper) • [Ollama](https://ollama.com) • [SDXL-Turbo](https://huggingface.co/stabilityai/sdxl-turbo) • [AnimateDiff](https://github.com/guoyww/AnimateDiff) • [Edge TTS](https://github.com/rany2/edge-tts) • [FFmpeg](https://ffmpeg.org)
