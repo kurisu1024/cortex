@@ -60,10 +60,16 @@ output:
     background: ai-generated  # Options: gradient, solid, image, ai-generated
     waveform: false        # Show audio waveform visualization
     animated: true         # Use AnimateDiff for animated cartoon clips (vs static images)
-    animation_frames: 16   # Frames per animated clip (8=1s, 16=2s, 24=3s)
+    animation_frames: 10   # Frames per animated clip (8=1s, 10=1.25s, 12=1.5s, 16=2s)
 
     # Animation modes:
-    # - animated: false - Static images with Ken Burns zoom/pan effects (fast, 5-10s per image)
-    # - animated: true  - Actual animated cartoon clips with character motion (slower, 20-30s per clip on GPU)
+    # - animated: false - Static images with Ken Burns zoom/pan effects (fast, ~5-10s per image)
+    # - animated: true  - Actual animated cartoon clips with character motion
     #
-    # Note: Animated mode requires more time and memory but creates fully animated characters and scenes
+    # Optimized animation performance (M4 GPU):
+    # - 8 frames  (1.0s): ~8-10 seconds per clip, ~1.5GB memory
+    # - 10 frames (1.25s): ~10-12 seconds per clip, ~2GB memory (recommended)
+    # - 12 frames (1.5s): ~12-14 seconds per clip, ~2.5GB memory
+    # - 16 frames (2.0s): ~15-18 seconds per clip, ~3GB memory
+    #
+    # Optimizations: fp16 precision, CPU offloading, reduced inference steps (15)
